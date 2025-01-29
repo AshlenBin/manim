@@ -248,7 +248,7 @@ class VMobject(Mobject):
         self,
         array_name: str,
         color: ManimColor | None = None,
-        opacity: float | None = None,
+        opacity: float = 1,
     ) -> Self:
         rgbas = self.generate_rgbas_array(color, opacity)
         if not hasattr(self, array_name):
@@ -273,7 +273,7 @@ class VMobject(Mobject):
     def set_fill(
         self,
         color: ParsableManimColor | None = None,
-        opacity: float | None = None,
+        opacity: float = 1,
         family: bool = True,
     ) -> Self:
         """Set the fill color and fill opacity of a :class:`VMobject`.
@@ -324,7 +324,7 @@ class VMobject(Mobject):
         self,
         color: ParsableManimColor = None,
         width: float | None = None,
-        opacity: float | None = None,
+        opacity: float = 1,
         background=False,
         family: bool = True,
     ) -> Self:
@@ -387,13 +387,13 @@ class VMobject(Mobject):
     def set_style(
         self,
         fill_color: ParsableManimColor | None = None,
-        fill_opacity: float | None = None,
+        fill_opacity: float = 1,
         stroke_color: ParsableManimColor | None = None,
         stroke_width: float | None = None,
-        stroke_opacity: float | None = None,
+        stroke_opacity: float = 1,
         background_stroke_color: ParsableManimColor | None = None,
         background_stroke_width: float | None = None,
-        background_stroke_opacity: float | None = None,
+        background_stroke_opacity: float = 1,
         sheen_factor: float | None = None,
         sheen_direction: Vector3D | None = None,
         background_image: Image | str | None = None,
