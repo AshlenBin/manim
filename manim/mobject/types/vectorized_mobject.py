@@ -38,7 +38,13 @@ from manim.utils.bezier import (
     partial_bezier_points,
     proportions_along_bezier_curve_for_point,
 )
-from manim.utils.color import BLACK, WHITE, ManimColor, ParsableManimColor
+from manim.utils.color import (
+    BLACK,
+    WHITE,
+    ManimColor,
+    ManimColorList,
+    ParsableManimColor,
+)
 from manim.utils.iterables import (
     make_even,
     resize_array,
@@ -108,13 +114,13 @@ class VMobject(Mobject):
     def __init__(
         self,
         fill_color: ParsableManimColor | None = None,
-        fill_opacity: float = 0.0,
+        fill_opacity: float = 1.0,
         stroke_color: ParsableManimColor | None = None,
         stroke_opacity: float = 1.0,
         stroke_width: float = DEFAULT_STROKE_WIDTH,
-        background_stroke_color: ParsableManimColor | None = BLACK,
+        background_stroke_color: ParsableManimColor | None = None,
         background_stroke_opacity: float = 1.0,
-        background_stroke_width: float = 0,
+        background_stroke_width: float = DEFAULT_STROKE_WIDTH,
         sheen_factor: float = 0.0,
         joint_type: LineJointType | None = None,
         sheen_direction: Vector3D = UL,
@@ -129,14 +135,11 @@ class VMobject(Mobject):
         cap_style: CapStyleType = CapStyleType.AUTO,
         **kwargs: Any,
     ):
-        self.fill_opacity = fill_opacity
-        self.stroke_opacity = stroke_opacity
         self.stroke_width = stroke_width
         if background_stroke_color is not None:
             self.background_stroke_color: ManimColor = ManimColor(
                 background_stroke_color
             )
-        self.background_stroke_opacity: float = background_stroke_opacity
         self.background_stroke_width: float = background_stroke_width
         self.sheen_factor: float = sheen_factor
         self.joint_type: LineJointType = (
@@ -158,17 +161,26 @@ class VMobject(Mobject):
             0, 1, n_points_per_cubic_curve
         )
         self.cap_style: CapStyleType = cap_style
-        super().__init__(**kwargs)
-        self.submobjects: list[VMobject]
+        self.submobjects: list[VMobject] = []
 
-        # TODO: Find where color overwrites are happening and remove the color doubling
-        # if "color" in kwargs:
-        #     fill_color = kwargs["color"]
-        #     stroke_color = kwargs["color"]
+        # 后面定义了self.fill_color= property(get_fill_colors, set_fill)
+        # self.fill_color = fill_color 实际上执行set_fill(fill_color)
+        # set_fill()会修改self._fill_color
+        self._fill_color = ManimColorList([0, 0, 0, 0])
+        self._stroke_color = ManimColorList([0, 0, 0, 0])
+        self._background_stroke_color = ManimColorList([0, 0, 0, 0])
         if fill_color is not None:
-            self.fill_color = ManimColor.parse(fill_color)
+            self.set_fill(fill_color, fill_opacity)
+            # self.fill_color = fill_color 只能传递color无法传递opacity，所以没法用
         if stroke_color is not None:
-            self.stroke_color = ManimColor.parse(stroke_color)
+            self.set_stroke(stroke_color, stroke_width, stroke_opacity)
+        if background_stroke_color is not None:
+            self.set_background_stroke(
+                background_stroke_color,
+                background_stroke_width,
+                background_stroke_opacity,
+            )
+        super().__init__(**kwargs)
 
     def _assert_valid_submobjects(self, submobjects: Iterable[VMobject]) -> Self:
         return self._assert_valid_submobjects_internal(submobjects, VMobject)
@@ -185,40 +197,12 @@ class VMobject(Mobject):
     def get_mobject_type_class() -> type[VMobject]:
         return VMobject
 
-    # Colors
-    def init_colors(self, propagate_colors: bool = True) -> Self:
-        self.set_fill(
-            color=self.fill_color,
-            opacity=self.fill_opacity,
-            family=propagate_colors,
-        )
-        self.set_stroke(
-            color=self.stroke_color,
-            width=self.stroke_width,
-            opacity=self.stroke_opacity,
-            family=propagate_colors,
-        )
-        self.set_background_stroke(
-            color=self.background_stroke_color,
-            width=self.background_stroke_width,
-            opacity=self.background_stroke_opacity,
-            family=propagate_colors,
-        )
-        self.set_sheen(
-            factor=self.sheen_factor,
-            direction=self.sheen_direction,
-            family=propagate_colors,
-        )
-
-        if not propagate_colors:
-            for submobject in self.submobjects:
-                submobject.init_colors(propagate_colors=False)
-
-        return self
-
-    def generate_rgbas_array(
-        self, color: ManimColor | list[ManimColor], opacity: float | Iterable[float]
-    ) -> RGBA_Array_Float:
+    def update_ColorList(
+        self,
+        old_colors: Sequence[ManimColor] | np.ndarray | None = None,
+        new_colors: Sequence[ManimColor] | np.ndarray | None = None,
+        opacity: float | Sequence[float] | None = None,
+    ) -> ManimColorList:
         """
         First arg can be either a color, or a tuple/list of colors.
         Likewise, opacity can either be a float, or a tuple of floats.
@@ -226,54 +210,60 @@ class VMobject(Mobject):
         one color was passed in, a second slightly light color
         will automatically be added for the gradient
         """
-        colors: list[ManimColor] = [
-            ManimColor(c) if (c is not None) else BLACK for c in tuplify(color)
-        ]
-        opacities: list[float] = [
-            o if (o is not None) else 0.0 for o in tuplify(opacity)
-        ]
-        rgbas: npt.NDArray[RGBA_Array_Float] = np.array(
-            [c.to_rgba_with_alpha(o) for c, o in zip(*make_even(colors, opacities))],
-        )
+        if old_colors is None or len(old_colors) == 0:
+            return ManimColorList(new_colors, opacity)
+        # old_colors为空的情况已经排除，下面old_colors均不为空
+        if new_colors is None:
+            if opacity is None:
+                # if new_colors和opacity都为空，then 返回旧颜色
+                return ManimColorList(old_colors)
+            else:
+                # if 只传入了opacity，then 修改旧颜色的opacity
+                colors = old_colors.copy()  # np.ndarrays是浅拷贝，所以要避免修改原数组
+                colors[:, 3] = opacity
+                return ManimColorList(colors)
 
+        if opacity is None:
+            # if 只传入了new_colors，then 检查new_colors是否是RGBA，如果不是则保留原先的不透明度
+            if isinstance(new_colors, str):
+                pass
+            elif isinstance(new_colors, np.ndarray):
+                if new_colors.shape[-1] == 3:
+                    opacity = old_colors.opacity[0]
+                    # 绝大多数情况下用户设置的不透明度都只有一个，所以这里只取首个
+                    # 如果用户想要有多个不透明度，那么只能自己传入值，系统默认不保留
+            elif isinstance(new_colors, Sequence):
+                if (
+                    all(isinstance(c, (int, float)) for c in new_colors)
+                    and len(new_colors) == 3
+                ):
+                    opacity = old_colors.opacity[0]
+                else:
+                    # 类似[(1,2,3),(1,2,3,0.5)]这样的输入，只要出现一个RGBA，就不保留不透明度
+                    # 即输出：[(1,2,3,1),(1,2,3,0.5)]，(1,2,3,1)的不透明度1是默认的
+                    has_rgba = False
+                    for c in new_colors:
+                        if isinstance(c, str):
+                            continue
+                        if len(c) == 4:
+                            has_rgba = True
+                    if not has_rgba:
+                        opacity = old_colors.opacity[0]
+
+            colors = old_colors.copy()  # np.ndarrays是浅拷贝，所以要避免修改原数组
+        colors = ManimColorList(new_colors, opacity)
         sheen_factor = self.get_sheen_factor()
-        if sheen_factor != 0 and len(rgbas) == 1:
-            light_rgbas = np.array(rgbas)
-            light_rgbas[:, :3] += sheen_factor
-            np.clip(light_rgbas, 0, 1, out=light_rgbas)
-            rgbas = np.append(rgbas, light_rgbas, axis=0)
-        return rgbas
-
-    def update_rgbas_array(
-        self,
-        array_name: str,
-        color: ManimColor | None = None,
-        opacity: float = 1,
-    ) -> Self:
-        rgbas = self.generate_rgbas_array(color, opacity)
-        if not hasattr(self, array_name):
-            setattr(self, array_name, rgbas)
-            return self
-        # Match up current rgbas array with the newly calculated
-        # one. 99% of the time they'll be the same.
-        curr_rgbas = getattr(self, array_name)
-        if len(curr_rgbas) < len(rgbas):
-            curr_rgbas = stretch_array_to_length(curr_rgbas, len(rgbas))
-            setattr(self, array_name, curr_rgbas)
-        elif len(rgbas) < len(curr_rgbas):
-            rgbas = stretch_array_to_length(rgbas, len(curr_rgbas))
-        # Only update rgb if color was not None, and only
-        # update alpha channel if opacity was passed in
-        if color is not None:
-            curr_rgbas[:, :3] = rgbas[:, :3]
-        if opacity is not None:
-            curr_rgbas[:, 3] = rgbas[:, 3]
-        return self
+        if sheen_factor != 0 and len(colors) == 1:
+            light_colors = colors[0]
+            light_colors[:, :3] += sheen_factor
+            np.clip(light_colors, 0, 1, out=light_colors)
+            colors.append(light_colors)
+        return colors
 
     def set_fill(
         self,
         color: ParsableManimColor | None = None,
-        opacity: float = 1,
+        opacity: float | None = None,
         family: bool = True,
     ) -> Self:
         """Set the fill color and fill opacity of a :class:`VMobject`.
@@ -314,41 +304,38 @@ class VMobject(Mobject):
         if family:
             for submobject in self.submobjects:
                 submobject.set_fill(color, opacity, family)
-        self.update_rgbas_array("fill_rgbas", color, opacity)
-        self.fill_rgbas: RGBA_Array_Float
-        if opacity is not None:
-            self.fill_opacity = opacity
+        if isinstance(color, dict):
+            color = color["fill_color"]
+        self._fill_color = self.update_ColorList(self._fill_color, color, opacity)
+
         return self
 
     def set_stroke(
         self,
         color: ParsableManimColor = None,
-        width: float | None = None,
-        opacity: float = 1,
+        width: float = None,
+        opacity: float | None = None,
         background=False,
         family: bool = True,
     ) -> Self:
         if family:
             for submobject in self.submobjects:
                 submobject.set_stroke(color, width, opacity, background, family)
+        if isinstance(color, dict):
+            color = color["stroke_color"]
         if background:
-            array_name = "background_stroke_rgbas"
-            width_name = "background_stroke_width"
-            opacity_name = "background_stroke_opacity"
+            self._background_stroke_color = self.update_ColorList(
+                self._background_stroke_color, color, opacity
+            )
+            if width is not None:
+                self.background_stroke_width = width
+
         else:
-            array_name = "stroke_rgbas"
-            width_name = "stroke_width"
-            opacity_name = "stroke_opacity"
-        self.update_rgbas_array(array_name, color, opacity)
-        if width is not None:
-            setattr(self, width_name, width)
-        if opacity is not None:
-            setattr(self, opacity_name, opacity)
-        if color is not None and background:
-            if isinstance(color, (list, tuple)):
-                self.background_stroke_color = ManimColor.parse(color)
-            else:
-                self.background_stroke_color = ManimColor(color)
+            self._stroke_color = self.update_ColorList(
+                self._stroke_color, color, opacity
+            )
+            if width is not None:
+                self.stroke_width = width
         return self
 
     def set_cap_style(self, cap_style: CapStyleType) -> Self:
@@ -379,21 +366,27 @@ class VMobject(Mobject):
         self.cap_style = cap_style
         return self
 
-    def set_background_stroke(self, **kwargs) -> Self:
-        kwargs["background"] = True
-        self.set_stroke(**kwargs)
+    def set_background_stroke(
+        self,
+        color: ParsableManimColor = None,
+        width: float = 10,
+        opacity: float | None = None,
+        family: bool = True,
+    ) -> Self:
+
+        self.set_stroke(color, width, opacity, True, family)
         return self
 
     def set_style(
         self,
         fill_color: ParsableManimColor | None = None,
-        fill_opacity: float = 1,
+        fill_opacity: float | None = None,
         stroke_color: ParsableManimColor | None = None,
         stroke_width: float | None = None,
-        stroke_opacity: float = 1,
+        stroke_opacity: float | None = None,
         background_stroke_color: ParsableManimColor | None = None,
         background_stroke_width: float | None = None,
-        background_stroke_opacity: float = 1,
+        background_stroke_opacity: float | None = None,
         sheen_factor: float | None = None,
         sheen_direction: Vector3D | None = None,
         background_image: Image | str | None = None,
@@ -423,23 +416,19 @@ class VMobject(Mobject):
         return self
 
     def get_style(self, simple: bool = False) -> dict:
-        ret = {
-            "stroke_opacity": self.get_stroke_opacity(),
-            "stroke_width": self.get_stroke_width(),
-        }
+        ret = {}
 
         # TODO: FIX COLORS HERE
         if simple:
-            ret["fill_color"] = self.get_fill_color()
-            ret["fill_opacity"] = self.get_fill_opacity()
-            ret["stroke_color"] = self.get_stroke_color()
-        else:
-            ret["fill_color"] = self.get_fill_colors()
-            ret["fill_opacity"] = self.get_fill_opacities()
+            ret["fill_color"] = self.fill_color
             ret["stroke_color"] = self.get_stroke_colors()
+            ret["stroke_width"] = self.get_stroke_width()
+        else:
+            ret["fill_color"] = self.fill_color
+            ret["stroke_color"] = self.get_stroke_colors()
+            ret["stroke_width"] = self.get_stroke_width()
             ret["background_stroke_color"] = self.get_stroke_colors(background=True)
             ret["background_stroke_width"] = self.get_stroke_width(background=True)
-            ret["background_stroke_opacity"] = self.get_stroke_opacity(background=True)
             ret["sheen_factor"] = self.get_sheen_factor()
             ret["sheen_direction"] = self.get_sheen_direction()
             ret["background_image"] = self.get_background_image()
@@ -532,62 +521,26 @@ class VMobject(Mobject):
 
     def fade(self, darkness: float = 0.5, family: bool = True) -> Self:
         factor = 1.0 - darkness
-        self.set_fill(opacity=factor * self.get_fill_opacity(), family=False)
-        self.set_stroke(opacity=factor * self.get_stroke_opacity(), family=False)
+        self.set_fill(opacity=factor * self.fill_color.opacity, family=False)
+        self.set_stroke(opacity=factor * self.stroke_color.opacity, family=False)
         self.set_background_stroke(
-            opacity=factor * self.get_stroke_opacity(background=True),
+            opacity=factor
+            * self._background_stroke_color.opacity,  # 【待修改】_background_stroke_color需要封装
             family=False,
         )
         super().fade(darkness, family)
         return self
 
-    def get_fill_rgbas(self) -> RGBA_Array_Float | Zeros:
-        try:
-            return self.fill_rgbas
-        except AttributeError:
-            return np.zeros((1, 4))
+    def get_fill_colors(self) -> ManimColor:
+        return self._fill_color
 
-    def get_fill_color(self) -> ManimColor:
-        """
-        If there are multiple colors (for gradient)
-        this returns the first one
-        """
-        return self.get_fill_colors()[0]
-
-    fill_color = property(get_fill_color, set_fill)
-
-    def get_fill_opacity(self) -> ManimFloat:
-        """
-        If there are multiple opacities, this returns the
-        first
-        """
-        return self.get_fill_opacities()[0]
-
-    # TODO: Does this just do a copy?
-    # TODO: I have the feeling that this function should not return None, does that have any usage ?
-    def get_fill_colors(self) -> list[ManimColor | None]:
-        return [
-            ManimColor(rgba[:3]) if rgba.any() else None
-            for rgba in self.get_fill_rgbas()
-        ]
-
-    def get_fill_opacities(self) -> npt.NDArray[ManimFloat]:
-        return self.get_fill_rgbas()[:, 3]
-
-    def get_stroke_rgbas(self, background: bool = False) -> RGBA_Array_float | Zeros:
-        try:
-            if background:
-                self.background_stroke_rgbas: RGBA_Array_Float
-                rgbas = self.background_stroke_rgbas
-            else:
-                self.stroke_rgbas: RGBA_Array_Float
-                rgbas = self.stroke_rgbas
-            return rgbas
-        except AttributeError:
-            return np.zeros((1, 4))
+    fill_color = property(get_fill_colors, set_fill)
 
     def get_stroke_color(self, background: bool = False) -> ManimColor | None:
-        return self.get_stroke_colors(background)[0]
+        if background:
+            return self._background_stroke_color
+        else:
+            return self._stroke_color
 
     stroke_color = property(get_stroke_color, set_stroke)
 
@@ -601,22 +554,20 @@ class VMobject(Mobject):
                 width = int(width)
         return max(0.0, width)
 
+    def get_stroke_opacities(self, background: bool = False) -> npt.NDArray[ManimFloat]:
+        return self.get_stroke_colors(background)[:, 3]
+
     def get_stroke_opacity(self, background: bool = False) -> ManimFloat:
         return self.get_stroke_opacities(background)[0]
 
     def get_stroke_colors(self, background: bool = False) -> list[ManimColor | None]:
-        return [
-            ManimColor(rgba[:3]) if rgba.any() else None
-            for rgba in self.get_stroke_rgbas(background)
-        ]
-
-    def get_stroke_opacities(self, background: bool = False) -> npt.NDArray[ManimFloat]:
-        return self.get_stroke_rgbas(background)[:, 3]
+        return self.get_stroke_color(background)
 
     def get_color(self) -> ManimColor:
-        if np.all(self.get_fill_opacities() == 0):
-            return self.get_stroke_color()
-        return self.get_fill_color()
+        return {
+            "fill_color": self.fill_color,
+            "stroke_color": self.stroke_color,
+        }
 
     color = property(get_color, set_color)
 
@@ -715,7 +666,7 @@ class VMobject(Mobject):
         # Reset color to put sheen_factor into effect
         if factor != 0:
             self.set_stroke(self.get_stroke_color(), family=family)
-            self.set_fill(self.get_fill_color(), family=family)
+            self.set_fill(self.get_fill_colors(), family=family)
         return self
 
     def get_sheen_direction(self) -> Vector3D:
@@ -1826,7 +1777,7 @@ class VMobject(Mobject):
         return new_points
 
     def align_rgbas(self, vmobject: VMobject) -> Self:
-        attrs = ["fill_rgbas", "stroke_rgbas", "background_stroke_rgbas"]
+        attrs = ["_fill_color", "_stroke_color", "_background_stroke_color"]
         for attr in attrs:
             a1 = getattr(self, attr)
             a2 = getattr(vmobject, attr)
@@ -1849,9 +1800,9 @@ class VMobject(Mobject):
         self, mobject1: VMobject, mobject2: VMobject, alpha: float
     ) -> None:
         attrs = [
-            "fill_rgbas",
-            "stroke_rgbas",
-            "background_stroke_rgbas",
+            "_fill_color",
+            "_stroke_color",
+            "_background_stroke_color",
             "stroke_width",
             "background_stroke_width",
             "sheen_direction",

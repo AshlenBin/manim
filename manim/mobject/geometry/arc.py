@@ -70,12 +70,7 @@ if TYPE_CHECKING:
     from manim.mobject.mobject import Mobject
     from manim.mobject.text.tex_mobject import SingleStringMathTex, Tex
     from manim.mobject.text.text_mobject import Text
-    from manim.typing import (
-        Point3D,
-        Point3DLike,
-        QuadraticSpline,
-        Vector3D,
-    )
+    from manim.typing import Point3D, Point3DLike, QuadraticSpline, Vector3D
 
 
 class TipableVMobject(VMobject, metaclass=ConvertToOpenGL):
@@ -169,7 +164,7 @@ class TipableVMobject(VMobject, metaclass=ConvertToOpenGL):
             tip_length = self.get_default_tip_length()
 
         color = self.get_color()
-        style.update({"fill_color": color, "stroke_color": color})
+        style.update(color)
         style.update(self.tip_style)
         tip = tip_shape(length=tip_length, **style)
         return tip
@@ -556,7 +551,7 @@ class Circle(Arc):
             radius=radius,
             start_angle=0,
             angle=TAU,
-            color=color,
+            stroke_color=color,
             **kwargs,
         )
 

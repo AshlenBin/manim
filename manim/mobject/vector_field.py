@@ -116,7 +116,7 @@ class VectorField(VGroup):
             self.pos_to_color = lambda pos: rgb_to_color(self.pos_to_rgb(pos))
         else:
             self.single_color = True
-            self.color = ManimColor.parse(color)
+            self.color = ManimColor(color)
         self.submob_movement_updater = None
 
     @staticmethod
@@ -841,7 +841,7 @@ class StreamLines(VectorField):
                     )
                     line.set_rgba_array_direct(
                         self.values_to_rgbas(norms, opacity),
-                        name="stroke_rgba",
+                        name="stroke_color",
                     )
                 else:
                     if np.any(self.z_range != np.array([0, 0.5, 0.5])):

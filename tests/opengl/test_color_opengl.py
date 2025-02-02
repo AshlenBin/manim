@@ -50,17 +50,17 @@ def test_set_color(using_opengl_renderer):
     m = OpenGLVMobject()
     assert m.color.to_hex() == "#FFFFFF"
     np.all(m.fill_rgba == np.array((0.0, 0.0, 0.0, 1.0)))
-    np.all(m.stroke_rgba == np.array((0.0, 0.0, 0.0, 1.0)))
+    np.all(m.stroke_color == np.array((0.0, 0.0, 0.0, 1.0)))
 
     m.set_color(BLACK)
     assert m.color.to_hex() == "#000000"
     np.all(m.fill_rgba == np.array((1.0, 1.0, 1.0, 1.0)))
-    np.all(m.stroke_rgba == np.array((1.0, 1.0, 1.0, 1.0)))
+    np.all(m.stroke_color == np.array((1.0, 1.0, 1.0, 1.0)))
 
     m.set_color(PURE_GREEN, opacity=0.5)
     assert m.color.to_hex() == "#00FF00"
     np.all(m.fill_rgba == np.array((0.0, 1.0, 0.0, 0.5)))
-    np.all(m.stroke_rgba == np.array((0.0, 1.0, 0.0, 0.5)))
+    np.all(m.stroke_color == np.array((0.0, 1.0, 0.0, 0.5)))
 
 
 def test_set_fill_color(using_opengl_renderer):
@@ -80,15 +80,15 @@ def test_set_fill_color(using_opengl_renderer):
 def test_set_stroke_color(using_opengl_renderer):
     m = OpenGLVMobject()
     assert m.stroke_color.to_hex() == "#FFFFFF"
-    np.all(m.stroke_rgba == np.array((0.0, 1.0, 0.0, 0.5)))
+    np.all(m.stroke_color == np.array((0.0, 1.0, 0.0, 0.5)))
 
     m.set_stroke(BLACK)
     assert m.stroke_color.to_hex() == "#000000"
-    np.all(m.stroke_rgba == np.array((1.0, 1.0, 1.0, 1.0)))
+    np.all(m.stroke_color == np.array((1.0, 1.0, 1.0, 1.0)))
 
     m.set_stroke(PURE_GREEN, opacity=0.5)
     assert m.stroke_color.to_hex() == "#00FF00"
-    np.all(m.stroke_rgba == np.array((0.0, 1.0, 0.0, 0.5)))
+    np.all(m.stroke_color == np.array((0.0, 1.0, 0.0, 0.5)))
 
 
 def test_set_fill(using_opengl_renderer):

@@ -116,9 +116,9 @@ class Camera:
         self.frame_rate = frame_rate
 
         if background_color is None:
-            self._background_color = ManimColor.parse(config["background_color"])
+            self._background_color = ManimColor(config["background_color"])
         else:
-            self._background_color = ManimColor.parse(background_color)
+            self._background_color = ManimColor(background_color)
         if background_opacity is None:
             self._background_opacity = config["background_opacity"]
         else:
@@ -750,7 +750,7 @@ class Camera:
         Camera
             The camera object.
         """
-        self.set_cairo_context_color(ctx, self.get_fill_rgbas(vmobject), vmobject)
+        self.set_cairo_context_color(ctx, self.get_fill_colors(vmobject), vmobject)
         ctx.fill_preserve()
         return self
 
@@ -779,7 +779,7 @@ class Camera:
             return self
         self.set_cairo_context_color(
             ctx,
-            self.get_stroke_rgbas(vmobject, background=background),
+            self.get_stroke_colors(vmobject, background=background),
             vmobject,
         )
         ctx.set_line_width(
@@ -795,7 +795,7 @@ class Camera:
         ctx.stroke_preserve()
         return self
 
-    def get_stroke_rgbas(self, vmobject: VMobject, background: bool = False):
+    def get_stroke_colors(self, vmobject: VMobject, background: bool = False):
         """Gets the RGBA array for the stroke of the passed
         VMobject.
 
@@ -812,9 +812,9 @@ class Camera:
         np.ndarray
             The RGBA array of the stroke.
         """
-        return vmobject.get_stroke_rgbas(background)
+        return vmobject.get_stroke_colors(background)
 
-    def get_fill_rgbas(self, vmobject: VMobject):
+    def get_fill_colors(self, vmobject: VMobject):
         """Returns the RGBA array of the fill of the passed VMobject
 
         Parameters
@@ -827,7 +827,7 @@ class Camera:
         np.array
             The RGBA Array of the fill of the VMobject
         """
-        return vmobject.get_fill_rgbas()
+        return vmobject.get_fill_colors()
 
     def get_background_colored_vmobject_displayer(self):
         """Returns the background_colored_vmobject_displayer

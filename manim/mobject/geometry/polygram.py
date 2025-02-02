@@ -88,7 +88,13 @@ class Polygram(VMobject, metaclass=ConvertToOpenGL):
         color: ParsableManimColor = BLUE,
         **kwargs: Any,
     ):
-        super().__init__(color=color, **kwargs)
+        if (
+            kwargs.get("stroke_color", None) is not None
+            or kwargs.get("fill_color", None) is not None
+        ):
+            super().__init__(**kwargs)
+        else:
+            super().__init__(stroke_color=color, **kwargs)
 
         for vertices in vertex_groups:
             # The inferred type for *vertices is Any, but it should be
@@ -416,7 +422,6 @@ class RegularPolygram(Polygram):
             group, _ = gen_polygon_vertices(start_angle)
 
             vertex_groups.append(group)
-
         super().__init__(*vertex_groups, **kwargs)
 
 
@@ -619,7 +624,7 @@ class Rectangle(Polygon):
 
     def __init__(
         self,
-        color: ParsableManimColor = WHITE,
+        color: ParsableManimColor = BLUE,
         height: float = 2.0,
         width: float = 4.0,
         grid_xstep: float | None = None,

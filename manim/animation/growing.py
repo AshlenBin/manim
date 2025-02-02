@@ -37,6 +37,7 @@ import numpy as np
 
 from ..animation.transform import Transform
 from ..constants import PI
+from ..utils.color import ManimColor, ManimColorList, ParsableManimColor
 from ..utils.paths import spiral_path
 
 if typing.TYPE_CHECKING:
@@ -76,10 +77,14 @@ class GrowFromPoint(Transform):
     """
 
     def __init__(
-        self, mobject: Mobject, point: np.ndarray, point_color: str = None, **kwargs
+        self,
+        mobject: Mobject,
+        point: np.ndarray,
+        point_color: ParsableManimColor = None,
+        **kwargs,
     ) -> None:
         self.point = point
-        self.point_color = point_color
+        self.point_color = ManimColor(point_color)
         super().__init__(mobject, introducer=True, **kwargs)
 
     def create_target(self) -> Mobject:

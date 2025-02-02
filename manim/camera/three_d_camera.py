@@ -125,15 +125,15 @@ class ThreeDCamera(Camera):
             return shaded_rgbas
         return rgbas
 
-    def get_stroke_rgbas(
+    def get_stroke_colors(
         self,
         vmobject,
         background=False,
     ):  # NOTE : DocStrings From parent
-        return self.modified_rgbas(vmobject, vmobject.get_stroke_rgbas(background))
+        return self.modified_rgbas(vmobject, vmobject.get_stroke_colors(background))
 
-    def get_fill_rgbas(self, vmobject):  # NOTE : DocStrings From parent
-        return self.modified_rgbas(vmobject, vmobject.get_fill_rgbas())
+    def get_fill_colors(self, vmobject):  # NOTE : DocStrings From parent
+        return self.modified_rgbas(vmobject, vmobject.get_fill_colors())
 
     def get_mobjects_to_display(self, *args, **kwargs):  # NOTE : DocStrings From parent
         mobjects = super().get_mobjects_to_display(*args, **kwargs)

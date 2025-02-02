@@ -12,6 +12,8 @@ from manim import config
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 from manim.mobject.types.vectorized_mobject import VMobject
 
+from ...utils.color import YELLOW, ManimColor, ManimColorList, ParsableManimColor
+
 if TYPE_CHECKING:
     from typing import Any
 
@@ -180,10 +182,12 @@ class Union(_BooleanOps):
 
     """
 
-    def __init__(self, *vmobjects: VMobject, **kwargs: Any) -> None:
+    def __init__(
+        self, *vmobjects: VMobject, color: ParsableManimColor = YELLOW, **kwargs: Any
+    ) -> None:
         if len(vmobjects) < 2:
             raise ValueError("At least 2 mobjects needed for Union.")
-        super().__init__(**kwargs)
+        super().__init__(fill_color=color, **kwargs)
         paths = []
         for vmobject in vmobjects:
             paths.append(self._convert_vmobject_to_skia_path(vmobject))
@@ -219,8 +223,14 @@ class Difference(_BooleanOps):
 
     """
 
-    def __init__(self, subject: VMobject, clip: VMobject, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        subject: VMobject,
+        clip: VMobject,
+        color: ParsableManimColor = YELLOW,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(fill_color=color, **kwargs)
         outpen = SkiaPath()
         difference(
             [self._convert_vmobject_to_skia_path(subject)],
@@ -261,11 +271,13 @@ class Intersection(_BooleanOps):
 
     """
 
-    def __init__(self, *vmobjects: VMobject, **kwargs: Any) -> None:
+    def __init__(
+        self, *vmobjects: VMobject, color: ParsableManimColor = YELLOW, **kwargs: Any
+    ) -> None:
         if len(vmobjects) < 2:
             raise ValueError("At least 2 mobjects needed for Intersection.")
 
-        super().__init__(**kwargs)
+        super().__init__(fill_color=color, **kwargs)
         outpen = SkiaPath()
         intersection(
             [self._convert_vmobject_to_skia_path(vmobjects[0])],
@@ -314,8 +326,14 @@ class Exclusion(_BooleanOps):
 
     """
 
-    def __init__(self, subject: VMobject, clip: VMobject, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        subject: VMobject,
+        clip: VMobject,
+        color: ParsableManimColor = YELLOW,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(fill_color=color, **kwargs)
         outpen = SkiaPath()
         xor(
             [self._convert_vmobject_to_skia_path(subject)],

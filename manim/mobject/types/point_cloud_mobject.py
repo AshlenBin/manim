@@ -110,7 +110,7 @@ class PMobject(Mobject, metaclass=ConvertToOpenGL):
         mobs = self.family_members_with_points() if family else [self]
         for mob in mobs:
             mob.rgbas[:, :] = rgba
-        self.color = ManimColor.parse(color)
+        self.color = ManimColor(color)
         return self
 
     def get_stroke_width(self) -> int:

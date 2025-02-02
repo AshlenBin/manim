@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from manim.typing import Point3D, Point3DLike
 
-from manim.utils.color import YELLOW
+from manim.utils.color import BLUE, GREEN, RED, YELLOW, ParsableManimColor
 
 
 class ParametricFunction(VMobject, metaclass=ConvertToOpenGL):
@@ -111,6 +111,7 @@ class ParametricFunction(VMobject, metaclass=ConvertToOpenGL):
         discontinuities: Iterable[float] | None = None,
         use_smoothing: bool = True,
         use_vectorized: bool = False,
+        color: ParsableManimColor = YELLOW,
         **kwargs,
     ):
         def internal_parametric_function(t: float) -> Point3D:
@@ -129,7 +130,7 @@ class ParametricFunction(VMobject, metaclass=ConvertToOpenGL):
         self.use_vectorized = use_vectorized
         self.t_min, self.t_max, self.t_step = t_range
 
-        super().__init__(**kwargs)
+        super().__init__(stroke_color=color, **kwargs)
 
     def get_function(self) -> Callable[[float], Point3D]:
         return self.function

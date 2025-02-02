@@ -76,10 +76,10 @@ msgstr ""
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.display_vectorized:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_cached_cairo_context:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_cairo_context:0
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_rgbas:0
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_colors:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_image:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_mobjects_to_display:0
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_rgbas:0
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_colors:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_thickening_nudges:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.is_in_frame:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.make_background_from_func:0
@@ -210,7 +210,7 @@ msgid "Returns the cartesian coordinates of each pixel."
 msgstr ""
 
 #: ../../source/reference/manim.camera.camera.Camera.rst:63:<autosummary>:1
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_rgbas:1
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_colors:1
 msgid "Returns the RGBA array of the fill of the passed VMobject"
 msgstr ""
 
@@ -225,7 +225,7 @@ msgid "Used to get the list of mobjects to display with the camera."
 msgstr ""
 
 #: ../../source/reference/manim.camera.camera.Camera.rst:63:<autosummary>:1
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_rgbas:1
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_colors:1
 msgid "Gets the RGBA array for the stroke of the passed VMobject."
 msgstr ""
 
@@ -324,10 +324,10 @@ msgstr ""
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_cached_cairo_context:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_cairo_context:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_coords_of_all_pixels:0
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_rgbas:0
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_colors:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_image:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_mobjects_to_display:0
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_rgbas:0
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_colors:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.is_in_frame:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.make_background_from_func:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.on_screen_pixels:0
@@ -354,10 +354,10 @@ msgstr ""
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_cached_cairo_context:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_cairo_context:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_coords_of_all_pixels:0
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_rgbas:0
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_colors:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_image:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_mobjects_to_display:0
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_rgbas:0
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_colors:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_thickening_nudges:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.is_in_frame:0
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.make_background_from_func:0
@@ -379,8 +379,8 @@ msgstr ""
 
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.apply_fill:5
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.apply_stroke:5
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_rgbas:3
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_rgbas:4
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_colors:3
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_colors:4
 #: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.set_cairo_context_path:5
 msgid "The VMobject"
 msgstr ""
@@ -535,7 +535,7 @@ msgstr ""
 msgid "The array of cartesian coordinates."
 msgstr ""
 
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_rgbas:6
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_fill_colors:6
 msgid "The RGBA Array of the fill of the VMobject"
 msgstr ""
 
@@ -563,11 +563,11 @@ msgstr ""
 msgid "list of mobjects"
 msgstr ""
 
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_rgbas:6
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_colors:6
 msgid "Whether or not to consider the background when getting the stroke RGBAs, by default False"
 msgstr ""
 
-#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_rgbas:10
+#: ../../../manim/camera/camera.py:docstring of manim.camera.camera.Camera.get_stroke_colors:10
 msgid "The RGBA array of the stroke."
 msgstr ""
 

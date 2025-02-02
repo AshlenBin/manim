@@ -152,7 +152,7 @@ def test_opacity() -> None:
 
 
 def test_parse() -> None:
-    nt.assert_equal(ManimColor.parse([RED, YELLOW]), [RED, YELLOW])
+    nt.assert_equal(ManimColor([RED, YELLOW]), [RED, YELLOW])
 
 
 def test_mc_operators() -> None:
@@ -165,13 +165,13 @@ def test_mc_operators() -> None:
 
 
 def test_mc_from_functions() -> None:
-    color = ManimColor.from_hex("#ff00a0")
+    color = ManimColor("#ff00a0")
     nt.assert_equal(color.to_hex(), "#FF00A0")
 
-    color = ManimColor.from_rgb((1.0, 1.0, 0.0))
+    color = ManimColor((1.0, 1.0, 0.0))
     nt.assert_equal(color.to_hex(), "#FFFF00")
 
-    color = ManimColor.from_rgba((1.0, 1.0, 0.0, 1.0))
+    color = ManimColor((1.0, 1.0, 0.0, 1.0))
     nt.assert_equal(color.to_hex(True), "#FFFF00FF")
 
     color = ManimColor.from_hsv((1.0, 1.0, 1.0), alpha=0.0)

@@ -42,20 +42,6 @@ three important methods:
       - The setter should always accept a value in the format ``[r,g,b,a]`` which can be
         converted to whatever attributes you need.
 
-  - :attr:`~ManimColor._internal_space`: a read-only ``@property`` implemented on
-    :class:`ManimColor` with the goal of providing a useful representation which can be
-    used by operators, interpolation and color transform functions.
-
-    The only constraints on this value are:
-
-      - It must be a NumPy array.
-
-      - The last value must be the opacity in a range ``0.0`` to ``1.0``.
-
-    Additionally, your ``__init__`` must support this format as an initialization value
-    without additional parameters to ensure correct functionality of all other methods in
-    :class:`ManimColor`.
-
   - :meth:`~ManimColor._from_internal`: a ``@classmethod`` which converts an
     ``[r,g,b,a]`` value into suitable parameters for your ``__init__`` method and calls
     the ``cls`` parameter.
@@ -104,51 +90,8 @@ from ...utils.space_ops import normalize
 re_hex = re.compile("((?<=#)|(?<=0x))[A-F0-9]{3,8}", re.IGNORECASE)
 
 
-class ManimColor:
-    """Internal representation of a color.
-
-    The :class:`ManimColor` class is the main class for the representation of a color.
-    Its internal representation is an array of 4 floats corresponding to a ``[r,g,b,a]``
-    value where ``r,g,b,a`` can be between 0.0 and 1.0.
-
-    This is done in order to reduce the amount of color inconsistencies by constantly
-    casting between integers and floats which introduces errors.
-
-    The class can accept any value of type :class:`ParsableManimColor` i.e.
-
-    ``ManimColor, int, str, RGB_Tuple_Int, RGB_Tuple_Float, RGBA_Tuple_Int, RGBA_Tuple_Float, RGB_Array_Int,
-    RGB_Array_Float, RGBA_Array_Int, RGBA_Array_Float``
-
-    :class:`ManimColor` itself only accepts singular values and will directly interpret
-    them into a single color if possible. Be careful when passing strings to
-    :class:`ManimColor`: it can create a big overhead for the color processing.
-
-    If you want to parse a list of colors, use the :meth:`parse` method, which assumes
-    that you're going to pass a list of colors so that arrays will not be interpreted as
-    a single color.
-
-    .. warning::
-        If you pass an array of numbers to :meth:`parse`, it will interpret the
-        ``r,g,b,a`` numbers in that array as colors: Instead of the expected
-        singular color, you will get an array with 4 colors.
-
-    For conversion behaviors, see the ``_internal`` functions for further documentation.
-
-    You can create a :class:`ManimColor` instance via its classmethods. See the
-    respective methods for more info.
-
-    .. code-block:: python
-
-        mycolor = ManimColor.from_rgb((0, 1, 0.4, 0.5))
-        myothercolor = ManimColor.from_rgb((153, 255, 255))
-
-    You can also convert between different color spaces:
-
-    .. code-block:: python
-
-        mycolor_hex = mycolor.to_hex()
-        myoriginalcolor = ManimColor.from_hex(mycolor_hex).to_hsv()
-
+class ManimColor(np.ndarray):
+    """A color class for Manim.
     Parameters
     ----------
     value
@@ -157,118 +100,121 @@ class ManimColor:
     alpha
         The opacity of the color. By default, colors are
         fully opaque (value 1.0).
+        如果传入alpha不为None，则将其作为不透明度，否则不透明度默认为1.0
+         如果value是RGBa，则alpha覆盖RGBa的a
+        比如：ManimColor((23,24,25,0.8), 0.5) , 则ManimColor的不透明度为0.5而不是0.8
+        【注意】不接受单独数字的灰度值！如果你想输入灰度值列表，请直接使用ManimColor.gray([1,2,3,4,5])
     """
 
-    def __init__(
-        self,
-        value: ParsableManimColor | None,
-        alpha: float = 1.0,
+    def __new__(
+        cls,
+        value: ParsableManimColor | None = None,
+        alpha: float | None = None,
+        scale: int = 255,
     ) -> None:
+
+        if (
+            isinstance(value, (Sequence, np.ndarray))
+            and not isinstance(value, str)
+            and not all(isinstance(c, (int, float)) for c in value)
+        ):
+            """自动识别输入的是“颜色”还是“颜色列表”
+            输入：color= [1,2,3] 视为RGB
+            返回：ManimColor，RGBa=[1/255,2/255,3/255,1]
+            输入：color= [1,2,3,4] 视为RGBa，a=4越界自动截断
+            返回：ManimColor，RGBa=[1/255,2/255,3/255,1]
+            输入：color= [[1,2,3],[4,5,6]] 视为两个RGB值
+            返回：ManimColorList，[[1/255,2/255,3/255,1],[4/255,5/255,6/255,1]]
+            输入：color= [1,2,3,4,5] 视为RGBa，
+            返回：报错，ManimColor初始化发现color长度不为3或4
+            如果你想输入灰度值列表，请直接使用ManimColor.gray([1,2,3,4,5])
+            """
+            return ManimColorList(value, alpha)
+
+        _internal_value = np.array((0, 0, 0, 1), dtype=ManimColorDType)
+
         if value is None:
-            self._internal_value = np.array((0, 0, 0, alpha), dtype=ManimColorDType)
+            pass
         elif isinstance(value, ManimColor):
-            # logger.info(
-            #     "ManimColor was passed another ManimColor. This is probably not what "
-            #     "you want. Created a copy of the passed ManimColor instead."
-            # )
-            self._internal_value = value._internal_value
-        elif isinstance(value, int):
-            self._internal_value = ManimColor._internal_from_integer(value, alpha)
-        elif isinstance(value, str):
+            _internal_value = value.copy()
+        elif isinstance(value, int):  # 十六进制数，不是灰度值！
+            _internal_value[0] = ((value >> 16) & 0xFF) / 255
+            _internal_value[1] = ((value >> 8) & 0xFF) / 255
+            _internal_value[2] = ((value >> 0) & 0xFF) / 255
+
+        elif isinstance(value, str):  # hex十六进制颜色值 或 颜色名称
             result = re_hex.search(value)
-            if result is not None:
-                self._internal_value = ManimColor._internal_from_hex_string(
-                    result.group(), alpha
-                )
-            else:
+            if result is not None:  # hex颜色值
+                _internal_value = cls._internal_from_hex_string(result.group())
+            else:  # 颜色名称
                 # This is not expected to be called on module initialization time
                 # It can be horribly slow to convert a string to a color because
                 # it has to access the dictionary of colors and find the right color
-                self._internal_value = ManimColor._internal_from_string(value, alpha)
-        elif isinstance(value, (list, tuple, np.ndarray)):
+                _internal_value = cls._internal_from_string(value)
+        elif isinstance(value, (np.ndarray, Sequence)):
             length = len(value)
-            if all(isinstance(x, float) for x in value):
-                if length == 3:
-                    self._internal_value = ManimColor._internal_from_rgb(value, alpha)  # type: ignore[arg-type]
-                elif length == 4:
-                    self._internal_value = ManimColor._internal_from_rgba(value)  # type: ignore[arg-type]
-                else:
-                    raise ValueError(
-                        f"ManimColor only accepts lists/tuples/arrays of length 3 or 4, not {length}"
-                    )
-            else:
-                if length == 3:
-                    self._internal_value = ManimColor._internal_from_int_rgb(
-                        value,  # type: ignore[arg-type]
-                        alpha,
-                    )
-                elif length == 4:
-                    self._internal_value = ManimColor._internal_from_int_rgba(value)  # type: ignore[arg-type]
-                else:
-                    raise ValueError(
-                        f"ManimColor only accepts lists/tuples/arrays of length 3 or 4, not {length}"
-                    )
-        elif hasattr(value, "get_hex") and callable(value.get_hex):
-            result = re_hex.search(value.get_hex())
-            if result is None:
-                raise ValueError(f"Failed to parse a color from {value}")
-            self._internal_value = ManimColor._internal_from_hex_string(
-                result.group(), alpha
-            )
+            if length != 3 and length != 4:
+                raise ValueError(
+                    f"ManimColor only accepts lists/tuples/arrays of length 3 or 4. You input: value = {value}"
+                )
+            if length == 4:  # RGBa，不透明度a取值范围应当在0-1之间，如果越界则自动调整
+                if value[3] < 0:
+                    value[3] = 0
+                elif value[3] > 1:
+                    value[3] = 1
+            for i in range(3):
+                if value[i] < 0:
+                    value[i] = 0
+                elif value[i] > scale:
+                    value[i] = scale
+            for i in range(length):  # 传参value写入_internal_value
+                _internal_value[i] = value[i]
+            _internal_value[:3] /= scale  # RGB取值范围转换为[0~1]
         else:
             # logger.error(f"Invalid color value: {value}")
             raise TypeError(
                 "ManimColor only accepts int, str, list[int, int, int], "
                 "list[int, int, int, int], list[float, float, float], "
-                f"list[float, float, float, float], not {type(value)}"
+                f"list[float, float, float, float]. You input: value =  {value}"
             )
+        if alpha is not None:
+            # 如果传入alpha不为None，则将其作为不透明度，否则不透明度默认为1.0
+            # 比如如果value是RGBa，则alpha覆盖RGBa的a
+            _internal_value[3] = alpha
+        return _internal_value.view(cls).copy()
 
-    @property
-    def _internal_space(self) -> npt.NDArray[ManimFloat]:
-        """This is a readonly property which is a custom representation for color space
-        operations. It is used for operators and can be used when implementing a custom
-        color space.
+    def __array_finalize__(self, obj: Self) -> None:
+        # 【功能】[0~1]越界截断
+        if obj is None:
+            return
+        if self.dtype == bool:
+            # self<0花式索引会创建新的ManimColor对象，导致无限递归
+            return
+
+        self[self < 0] = 0
+        self[self > 1] = 1
+
+    def gray(value: int | Sequence[int] | np.ndarray[int], opacity: float = 1.0):
+        """Create a gray color with the given value.
+        输入：value灰度值[0~255]，opacity不透明度
+        输出：ManimColor对象，灰度值转为RGB
+        若value为序列，则返回ManimColorList
         """
-        return self._internal_value
-
-    @property
-    def _internal_value(self) -> ManimColorInternal:
-        """Return the internal value of the current Manim color ``[r,g,b,a]`` float
-        array.
-
-        Returns
-        -------
-        ManimColorInternal
-            Internal color representation.
-        """
-        return self.__value
-
-    @_internal_value.setter
-    def _internal_value(self, value: ManimColorInternal) -> None:
-        """Overwrite the internal color value of this :class:`ManimColor`.
-
-        Parameters
-        ----------
-        value
-            The value which will overwrite the current color.
-
-        Raises
-        ------
-        TypeError
-            If an invalid array is passed.
-        """
-        if not isinstance(value, np.ndarray):
-            raise TypeError("Value must be a NumPy array.")
-        if value.shape[0] != 4:
-            raise TypeError("Array must have exactly 4 values.")
-        self.__value: ManimColorInternal = value
+        if value is None:
+            raise ValueError("'value' cannot be None")
+        if isinstance(value, int):
+            return ManimColor([value, value, value, opacity])
+        if isinstance(value, (np.ndarray, Sequence)):
+            return ManimColorList([(v, v, v, opacity) for v in value])
 
     @classmethod
     def _construct_from_space(
         cls,
-        _space: npt.NDArray[ManimFloat]
-        | tuple[float, float, float]
-        | tuple[float, float, float, float],
+        _space: (
+            npt.NDArray[ManimFloat]
+            | tuple[float, float, float]
+            | tuple[float, float, float, float]
+        ),
     ) -> Self:
         """This function is used as a proxy for constructing a color with an internal
         value. This can be used by subclasses to hook into the construction of new
@@ -277,19 +223,7 @@ class ManimColor:
         return cls(_space)
 
     @staticmethod
-    def _internal_from_integer(value: int, alpha: float) -> ManimColorInternal:
-        return np.asarray(
-            (
-                ((value >> 16) & 0xFF) / 255,
-                ((value >> 8) & 0xFF) / 255,
-                ((value >> 0) & 0xFF) / 255,
-                alpha,
-            ),
-            dtype=ManimColorDType,
-        )
-
-    @staticmethod
-    def _internal_from_hex_string(hex_: str, alpha: float) -> ManimColorInternal:
+    def _internal_from_hex_string(hex_: str) -> ManimColorInternal:
         """Internal function for converting a hex string into the internal representation
         of a :class:`ManimColor`.
 
@@ -303,9 +237,6 @@ class ManimColor:
         ----------
         hex
             Hex string to be parsed.
-        alpha
-            Alpha value used for the color, if the color is only 3 bytes long. Otherwise,
-            if the color is 4 bytes long, this parameter will not be used.
 
         Returns
         -------
@@ -323,108 +254,18 @@ class ManimColor:
                 "Hex colors must be specified with either 0x or # as prefix and contain 6 or 8 hexadecimal numbers"
             )
         tmp = int(hex_, 16)
-        return np.asarray(
+        return np.array(
             (
                 ((tmp >> 24) & 0xFF) / 255,
                 ((tmp >> 16) & 0xFF) / 255,
                 ((tmp >> 8) & 0xFF) / 255,
-                alpha,
+                1,
             ),
             dtype=ManimColorDType,
         )
 
     @staticmethod
-    def _internal_from_int_rgb(
-        rgb: RGB_Tuple_Int, alpha: float = 1.0
-    ) -> ManimColorInternal:
-        """Internal function for converting an RGB tuple of integers into the internal
-        representation of a :class:`ManimColor`.
-
-        *For internal use only*
-
-        Parameters
-        ----------
-        rgb
-            Integer RGB tuple to be parsed
-        alpha
-            Optional alpha value. Default is 1.0.
-
-        Returns
-        -------
-        ManimColorInternal
-            Internal color representation.
-        """
-        value: np.ndarray = np.asarray(rgb, dtype=ManimColorDType).copy() / 255
-        value.resize(4, refcheck=False)
-        value[3] = alpha
-        return value
-
-    @staticmethod
-    def _internal_from_rgb(
-        rgb: RGB_Tuple_Float, alpha: float = 1.0
-    ) -> ManimColorInternal:
-        """Internal function for converting a rgb tuple of floats into the internal
-        representation of a :class:`ManimColor`.
-
-        *For internal use only*
-
-        Parameters
-        ----------
-        rgb
-            Float RGB tuple to be parsed.
-        alpha
-            Optional alpha value. Default is 1.0.
-
-        Returns
-        -------
-        ManimColorInternal
-            Internal color representation.
-        """
-        value: np.ndarray = np.asarray(rgb, dtype=ManimColorDType).copy()
-        value.resize(4, refcheck=False)
-        value[3] = alpha
-        return value
-
-    @staticmethod
-    def _internal_from_int_rgba(rgba: RGBA_Tuple_Int) -> ManimColorInternal:
-        """Internal function for converting an RGBA tuple of integers into the internal
-        representation of a :class:`ManimColor`.
-
-        *For internal use only*
-
-        Parameters
-        ----------
-        rgba
-            Int RGBA tuple to be parsed.
-
-        Returns
-        -------
-        ManimColorInternal
-            Internal color representation.
-        """
-        return np.asarray(rgba, dtype=ManimColorDType) / 255
-
-    @staticmethod
-    def _internal_from_rgba(rgba: RGBA_Tuple_Float) -> ManimColorInternal:
-        """Internal function for converting an RGBA tuple of floats into the internal
-        representation of a :class:`ManimColor`.
-
-        *For internal use only*
-
-        Parameters
-        ----------
-        rgba
-            Int RGBA tuple to be parsed.
-
-        Returns
-        -------
-        ManimColorInternal
-            Internal color representation.
-        """
-        return np.asarray(rgba, dtype=ManimColorDType)
-
-    @staticmethod
-    def _internal_from_string(name: str, alpha: float) -> ManimColorInternal:
+    def _internal_from_string(name: str) -> ManimColorInternal:
         """Internal function for converting a string into the internal representation of
         a :class:`ManimColor`. This is not used for hex strings: please refer to
         :meth:`_internal_from_hex` for this functionality.
@@ -450,8 +291,8 @@ class ManimColor:
         from . import _all_color_dict
 
         if tmp := _all_color_dict.get(name.upper()):
-            tmp._internal_value[3] = alpha
-            return tmp._internal_value.copy()
+            tmp[3] = 1
+            return tmp.copy()
         else:
             raise ValueError(f"Color {name} not found")
 
@@ -466,7 +307,7 @@ class ManimColor:
         int
             Integer representation of the color.
         """
-        tmp = (self._internal_value[:3] * 255).astype(dtype=np.byte).tobytes()
+        tmp = (self[:3] * 255).astype(dtype=np.byte).tobytes()
         return int.from_bytes(tmp, "big")
 
     def to_rgb(self) -> RGB_Array_Float:
@@ -477,7 +318,7 @@ class ManimColor:
         RGB_Array_Float
             RGB array of 3 floats from 0.0 to 1.0.
         """
-        return self._internal_value[:3]
+        return self[:3]
 
     def to_int_rgb(self) -> RGB_Array_Int:
         """Convert the current :class:`ManimColor` into an RGB array of integers.
@@ -487,7 +328,7 @@ class ManimColor:
         RGB_Array_Int
             RGB array of 3 integers from 0 to 255.
         """
-        return (self._internal_value[:3] * 255).astype(int)
+        return (self[:3] * 255).astype(int)
 
     def to_rgba(self) -> RGBA_Array_Float:
         """Convert the current :class:`ManimColor` into an RGBA array of floats.
@@ -497,7 +338,7 @@ class ManimColor:
         RGBA_Array_Float
             RGBA array of 4 floats from 0.0 to 1.0.
         """
-        return self._internal_value
+        return self
 
     def to_int_rgba(self) -> RGBA_Array_Int:
         """Convert the current ManimColor into an RGBA array of integers.
@@ -508,42 +349,7 @@ class ManimColor:
         RGBA_Array_Int
             RGBA array of 4 integers from 0 to 255.
         """
-        return (self._internal_value * 255).astype(int)
-
-    def to_rgba_with_alpha(self, alpha: float) -> RGBA_Array_Float:
-        """Convert the current :class:`ManimColor` into an RGBA array of floats. This is
-        similar to :meth:`to_rgba`, but you can change the alpha value.
-
-        Parameters
-        ----------
-        alpha
-            Alpha value to be used in the return value.
-
-        Returns
-        -------
-        RGBA_Array_Float
-            RGBA array of 4 floats from 0.0 to 1.0.
-        """
-        return np.fromiter((*self._internal_value[:3], alpha), dtype=ManimColorDType)
-
-    def to_int_rgba_with_alpha(self, alpha: float) -> RGBA_Array_Int:
-        """Convert the current :class:`ManimColor` into an RGBA array of integers. This
-        is similar to :meth:`to_int_rgba`, but you can change the alpha value.
-
-        Parameters
-        ----------
-        alpha
-            Alpha value to be used for the return value. Pass a float between 0.0 and
-            1.0: it will automatically be scaled to an integer between 0 and 255.
-
-        Returns
-        -------
-        RGBA_Array_Int
-            RGBA array of 4 integers from 0 to 255.
-        """
-        tmp = self._internal_value * 255
-        tmp[3] = alpha * 255
-        return tmp.astype(int)
+        return (self * 255).astype(int)
 
     def to_hex(self, with_alpha: bool = False) -> str:
         """Convert the :class:`ManimColor` to a hexadecimal representation of the color.
@@ -561,12 +367,12 @@ class ManimColor:
             the ``with_alpha`` parameter. By default, it has 6 nibbles, i.e. ``#XXXXXX``.
         """
         tmp = (
-            f"#{int(self._internal_value[0] * 255):02X}"
-            f"{int(self._internal_value[1] * 255):02X}"
-            f"{int(self._internal_value[2] * 255):02X}"
+            f"#{int(self[0] * 255):02X}"
+            f"{int(self[1] * 255):02X}"
+            f"{int(self[2] * 255):02X}"
         )
         if with_alpha:
-            tmp += f"{int(self._internal_value[3] * 255):02X}"
+            tmp += f"{int(self[3] * 255):02X}"
         return tmp
 
     def to_hsv(self) -> HSV_Array_Float:
@@ -623,14 +429,14 @@ class ManimColor:
             The linearly inverted :class:`ManimColor`.
         """
         if with_alpha:
-            return self._construct_from_space(1.0 - self._internal_space)
+            return np.subtract(1, self)
         else:
-            alpha = self._internal_space[3]
-            new = 1.0 - self._internal_space
+            alpha = self[3]
+            new = np.subtract(1, self)
             new[-1] = alpha
-            return self._construct_from_space(new)
+            return new
 
-    def interpolate(self, other: Self, alpha: float) -> Self:
+    def interpolate(self, other: Self, weight: float) -> Self:
         """Interpolate between the current and the given :class:`ManimColor`, and return
         the result.
 
@@ -648,9 +454,7 @@ class ManimColor:
         ManimColor
             The interpolated :class:`ManimColor`.
         """
-        return self._construct_from_space(
-            self._internal_space * (1 - alpha) + other._internal_space * alpha
-        )
+        return self * (1 - weight) + other * weight
 
     def darker(self, blend: float = 0.2) -> Self:
         """Return a new color that is darker than the current color, i.e.
@@ -674,9 +478,10 @@ class ManimColor:
         """
         from manim.utils.color.manim_colors import BLACK
 
-        alpha = self._internal_space[3]
-        black = self._from_internal(BLACK._internal_value)
-        return self.interpolate(black, blend).opacity(alpha)
+        alpha = self[3]
+        result = self.interpolate(BLACK, blend)
+        result[3] = alpha
+        return result
 
     def lighter(self, blend: float = 0.2) -> Self:
         """Return a new color that is lighter than the current color, i.e.
@@ -700,9 +505,10 @@ class ManimColor:
         """
         from manim.utils.color.manim_colors import WHITE
 
-        alpha = self._internal_space[3]
-        white = self._from_internal(WHITE._internal_value)
-        return self.interpolate(white, blend).opacity(alpha)
+        alpha = self[3]
+        result = self.interpolate(WHITE, blend)
+        result[3] = alpha
+        return result
 
     def contrasting(
         self,
@@ -739,29 +545,16 @@ class ManimColor:
         if luminance < threshold:
             if light is not None:
                 return light
-            return self._from_internal(WHITE._internal_value)
+            return WHITE
         else:
             if dark is not None:
                 return dark
-            return self._from_internal(BLACK._internal_value)
+            return BLACK
 
-    def opacity(self, opacity: float) -> Self:
-        """Create a new :class:`ManimColor` with the given opacity and the same color
-        values as before.
-
-        Parameters
-        ----------
-        opacity
-            The new opacity value to be used.
-
-        Returns
-        -------
-        ManimColor
-            The new :class:`ManimColor` with the same color values and the new opacity.
-        """
-        tmp = self._internal_space.copy()
-        tmp[-1] = opacity
-        return self._construct_from_space(tmp)
+    @property
+    def opacity(self) -> float:
+        """获取颜色的不透明度"""
+        return self[3]
 
     def into(self, class_type: type[ManimColorT]) -> ManimColorT:
         """Convert the current color into a different colorspace given by ``class_type``,
@@ -779,91 +572,7 @@ class ManimColor:
             A new color object of type ``class_type`` and the same
             :attr:`_internal_value` as the original color.
         """
-        return class_type._from_internal(self._internal_value)
-
-    @classmethod
-    def _from_internal(cls, value: ManimColorInternal) -> Self:
-        """This method is intended to be overwritten by custom color space classes
-        which are subtypes of :class:`ManimColor`.
-
-        The method constructs a new object of the given class by transforming the value
-        in the internal format ``[r,g,b,a]`` into a format which the constructor of the
-        custom class can understand. Look at :class:`.HSV` for an example.
-        """
-        return cls(value)
-
-    @classmethod
-    def from_rgb(
-        cls,
-        rgb: RGB_Array_Float | RGB_Tuple_Float | RGB_Array_Int | RGB_Tuple_Int,
-        alpha: float = 1.0,
-    ) -> Self:
-        """Create a ManimColor from an RGB array. Automagically decides which type it
-        is: ``int`` or ``float``.
-
-        .. warning::
-            Please make sure that your elements are not floats if you want integers. A
-            ``5.0`` will result in the input being interpreted as if it was an RGB float
-            array with the value ``5.0`` and not the integer ``5``.
-
-
-        Parameters
-        ----------
-        rgb
-            Any iterable of 3 floats or 3 integers.
-        alpha
-            Alpha value to be used in the color. Default is 1.0.
-
-        Returns
-        -------
-        ManimColor
-            The :class:`ManimColor` which corresponds to the given ``rgb``.
-        """
-        return cls._from_internal(ManimColor(rgb, alpha)._internal_value)
-
-    @classmethod
-    def from_rgba(
-        cls, rgba: RGBA_Array_Float | RGBA_Tuple_Float | RGBA_Array_Int | RGBA_Tuple_Int
-    ) -> Self:
-        """Create a ManimColor from an RGBA Array. Automagically decides which type it
-        is: ``int`` or ``float``.
-
-        .. warning::
-            Please make sure that your elements are not floats if you want integers. A
-            ``5.0`` will result in the input being interpreted as if it was a float RGB
-            array with the float ``5.0`` and not the integer ``5``.
-
-        Parameters
-        ----------
-        rgba
-            Any iterable of 4 floats or 4 integers.
-
-        Returns
-        -------
-        ManimColor
-            The :class:`ManimColor` corresponding to the given ``rgba``.
-        """
-        return cls(rgba)
-
-    @classmethod
-    def from_hex(cls, hex_str: str, alpha: float = 1.0) -> Self:
-        """Create a :class:`ManimColor` from a hex string.
-
-        Parameters
-        ----------
-        hex_str
-            The hex string to be converted.  The allowed prefixes for this string are
-            ``#`` and ``0x``. Currently, this method only supports 6 nibbles, i.e. only
-            strings in the format ``#XXXXXX`` or ``0xXXXXXX``.
-        alpha
-            Alpha value to be used for the hex string. Default is 1.0.
-
-        Returns
-        -------
-        ManimColor
-            The :class:`ManimColor` represented by the hex string.
-        """
-        return cls._from_internal(ManimColor(hex_str, alpha)._internal_value)
+        return class_type(self, scale=1)
 
     @classmethod
     def from_hsv(
@@ -885,7 +594,8 @@ class ManimColor:
             array.
         """
         rgb = colorsys.hsv_to_rgb(*hsv)
-        return cls._from_internal(ManimColor(rgb, alpha)._internal_value)
+
+        return ManimColor(rgb, alpha, scale=1)
 
     @classmethod
     def from_hsl(
@@ -907,7 +617,7 @@ class ManimColor:
             array.
         """
         rgb = colorsys.hls_to_rgb(*hsl)
-        return cls._from_internal(ManimColor(rgb, alpha)._internal_value)
+        return ManimColor(rgb, alpha, scale=1)
 
     @overload
     @classmethod
@@ -928,38 +638,27 @@ class ManimColor:
     @classmethod
     def parse(
         cls,
-        color: ParsableManimColor | Sequence[ParsableManimColor] | None,
-        alpha: float = 1.0,
+        color: ParsableManimColor | Sequence[ParsableManimColor],
+        alpha: float | None = None,
     ) -> Self | list[Self]:
-        """Parse one color as a :class:`ManimColor` or a sequence of colors as a list of
-        :class:`ManimColor`'s.
-
-        Parameters
-        ----------
-        color
-            The color or list of colors to parse. Note that this function can not accept
-            tuples: it will assume that you mean ``Sequence[ParsableManimColor]`` and will
-            return a ``list[ManimColor]``.
-        alpha
-            The alpha (opacity) value to use for the passed color(s).
-
-        Returns
-        -------
-        ManimColor | list[ManimColor]
-            Either a list of colors or a singular color, depending on the input.
+        """自动识别输入的是“颜色”还是“颜色列表”
+        输入：color= [1,2,3] 视为RGB
+         返回：ManimColor，RGBa=[1/255,2/255,3/255,1]
+        输入：color= [1,2,3,4] 视为RGBa，a=4越界自动截断
+         返回：ManimColor，RGBa=[1/255,2/255,3/255,1]
+        输入：color= [[1,2,3],[4,5,6]] 视为两个RGB值
+         返回：ManimColorList，[[1/255,2/255,3/255,1],[4/255,5/255,6/255,1]]
+        输入：color= [1,2,3,4,5] 视为RGBa，
+         返回：报错，ManimColor初始化发现color长度不为3或4
+        如果你想输入灰度值列表，请直接使用ManimColor.gray([1,2,3,4,5])
         """
 
-        def is_sequence(
-            color: ParsableManimColor | Sequence[ParsableManimColor] | None,
-        ) -> TypeIs[Sequence[ParsableManimColor]]:
-            return isinstance(color, (list, tuple))
-
-        if is_sequence(color):
-            return [
-                cls._from_internal(ManimColor(c, alpha)._internal_value) for c in color
-            ]
+        if isinstance(color, (Sequence, np.ndarray)) and not all(
+            isinstance(c, (int, float)) for c in color
+        ):
+            return ManimColorList(color, alpha)
         else:
-            return cls._from_internal(ManimColor(color, alpha)._internal_value)
+            return ManimColor(color, alpha)
 
     @staticmethod
     def gradient(
@@ -972,95 +671,59 @@ class ManimColor:
         raise NotImplementedError
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}('{self.to_hex()}')"
+        return f"{self.__class__.__name__}('{self}')"
 
     def __str__(self) -> str:
         return f"{self.to_hex()}"
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ManimColor):
-            raise TypeError(
-                f"Cannot compare {self.__class__.__name__} with {other.__class__.__name__}"
-            )
-        are_equal: bool = np.allclose(self._internal_value, other._internal_value)
-        return are_equal
+        if isinstance(other, (int, float)):
+            other = ManimColor.gray(other)
+        else:
+            other = ManimColor(other)
+        return np.allclose(self, other)
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __bool__(self) -> bool:
+        return True
 
     def __add__(self, other: int | float | Self) -> Self:
         if isinstance(other, (int, float)):
-            return self._construct_from_space(self._internal_space + other)
+            other = ManimColor.gray(other)
         else:
-            return self._construct_from_space(
-                self._internal_space + other._internal_space
-            )
+            other = ManimColor(other)
+        alpha = self[3]
+        result = np.add(self, other)
+        result[3] = alpha
+        return result
 
     def __radd__(self, other: int | float | Self) -> Self:
         return self + other
 
     def __sub__(self, other: int | float | Self) -> Self:
         if isinstance(other, (int, float)):
-            return self._construct_from_space(self._internal_space - other)
+            other = ManimColor.gray(other)
         else:
-            return self._construct_from_space(
-                self._internal_space - other._internal_space
-            )
+            other = ManimColor(other)
+        alpha = self[3]
+        result = np.subtract(self, other)
+        result[3] = alpha
+        return result
 
     def __rsub__(self, other: int | float | Self) -> Self:
-        return self - other
-
-    def __mul__(self, other: int | float | Self) -> Self:
+        # 【问题】1 - ManimColor([1,1,1,0.7]) 要等于什么？
+        # 【答】1 视为[1/255]，得到ManimColor([(1/255)-1,-1,-1,0.7])保留不透明度
+        # 越界截断，所以返回 ManimColor([0,0,0,0.7])
         if isinstance(other, (int, float)):
-            return self._construct_from_space(self._internal_space * other)
+            other = ManimColor.gray(other)
         else:
-            return self._construct_from_space(
-                self._internal_space * other._internal_space
-            )
-
-    def __rmul__(self, other: int | float | Self) -> Self:
-        return self * other
-
-    def __truediv__(self, other: int | float | Self) -> Self:
-        if isinstance(other, (int, float)):
-            return self._construct_from_space(self._internal_space / other)
-        else:
-            return self._construct_from_space(
-                self._internal_space / other._internal_space
-            )
-
-    def __rtruediv__(self, other: int | float | Self) -> Self:
-        return self / other
-
-    def __floordiv__(self, other: int | float | Self) -> Self:
-        if isinstance(other, (int, float)):
-            return self._construct_from_space(self._internal_space // other)
-        else:
-            return self._construct_from_space(
-                self._internal_space // other._internal_space
-            )
-
-    def __rfloordiv__(self, other: int | float | Self) -> Self:
-        return self // other
-
-    def __mod__(self, other: int | float | Self) -> Self:
-        if isinstance(other, (int, float)):
-            return self._construct_from_space(self._internal_space % other)
-        else:
-            return self._construct_from_space(
-                self._internal_space % other._internal_space
-            )
-
-    def __rmod__(self, other: int | float | Self) -> Self:
-        return self % other
-
-    def __pow__(self, other: int | float | Self) -> Self:
-        if isinstance(other, (int, float)):
-            return self._construct_from_space(self._internal_space**other)
-        else:
-            return self._construct_from_space(
-                self._internal_space**other._internal_space
-            )
-
-    def __rpow__(self, other: int | float | Self) -> Self:
-        return self**other
+            other = ManimColor(other)
+        alpha = self[3]
+        result = np.subtract(other, self)
+        result[3] = alpha
+        return result
 
     def __invert__(self) -> Self:
         return self.invert()
@@ -1068,27 +731,104 @@ class ManimColor:
     def __int__(self) -> int:
         return self.to_integer()
 
-    def __getitem__(self, index: int) -> float:
-        item: float = self._internal_space[index]
-        return item
-
-    def __and__(self, other: Self) -> Self:
-        return self._construct_from_space(
-            self._internal_from_integer(self.to_integer() & int(other), 1.0)
-        )
-
-    def __or__(self, other: Self) -> Self:
-        return self._construct_from_space(
-            self._internal_from_integer(self.to_integer() | int(other), 1.0)
-        )
-
-    def __xor__(self, other: Self) -> Self:
-        return self._construct_from_space(
-            self._internal_from_integer(self.to_integer() ^ int(other), 1.0)
-        )
-
     def __hash__(self) -> int:
         return hash(self.to_hex(with_alpha=True))
+
+
+class ManimColorList(np.ndarray):
+    """Represents a list of ManimColors as numpy array.
+    输入: colors = [1,2,3]视为一个RGB值
+     输出：[[1/255,2/255,3/255,1]]
+    输入：colors = [[1,2,3],[4,5,6]]视为两个RGB值
+     输出：[[1/255,2/255,3/255,1],[4/255,5/255,6/255,1]]
+    输入：colors = [1,2,3,4,5]视为RGBa，
+     输出：报错，ManimColor初始化发现color长度不为3或4
+    输入多个color和一个opacity，则opacity是所有color的opacity
+    若opacity==None且colors不为RGBa，则默认opacity=1（在ManimColor初始化里）
+    若opacity不为None 且 colors为RGBa，则opacity覆盖RGBa的a
+    """
+
+    def __new__(
+        cls,
+        colors: (
+            np.ndarray
+            | Sequence[ManimColor]
+            | Sequence[int]
+            | Sequence[float]
+            | Sequence[str]
+            | ManimColor
+            | int
+            | float
+            | str
+            | None
+        ) = None,
+        opacity: float | Sequence[float] | None = None,
+    ):
+        if isinstance(colors, ManimColorList):
+            return colors.copy()
+        if colors is None or (
+            isinstance(colors, (np.ndarray, Sequence)) and len(colors) == 0
+        ):
+            return np.array([], dtype=ManimColorDType).view(cls).copy()
+        if isinstance(colors, ManimColor):
+            obj = np.expand_dims(colors, axis=0).view(cls)
+            return obj.copy()
+        if isinstance(colors, (int, float, str)):
+            # 输入1变为[1]，输入'#'变为['#']
+            colors = [colors]
+        if not isinstance(colors, (np.ndarray, Sequence)):  # 注意str也是Sequence
+            raise ValueError(
+                "'colors' must be a list of ManimColor or a single ManimColor",
+                f"Your input : colors={colors}",
+            )
+
+        if isinstance(colors, np.ndarray):
+            # 输入[1,2,3]变为[[1,2,3]]
+            if len(colors.shape) == 1:
+                colors = [colors]
+        elif isinstance(colors, Sequence):
+            # 输入[1,2,3]变为[[1,2,3]]，输入[1,2,'#']保持不变
+            if all(isinstance(c, (int, float)) for c in colors):
+                colors = [colors]
+
+        if not isinstance(opacity, (np.ndarray, Sequence)):
+            # 输入多个color和一个opacity，则opacity是所有color的opacity
+            color_list = [ManimColor(c, opacity).to_rgba() for c in colors]
+        else:
+            if len(opacity) != len(colors):
+                raise ValueError("length of opacity must match length of color")
+            color_list = [ManimColor(c, o).to_rgba() for c, o in zip(colors, opacity)]
+
+        obj = np.asarray(color_list, dtype=np.float64).view(cls)  # ManimColorDType
+        return obj.copy()
+
+    # def __array_finalize__(self, obj):
+    #     pass
+
+    @property
+    def opacity(self) -> np.ndarray:
+        # 获取所有颜色的不透明度
+        return self[:, 3]
+
+    def append(self, color: ParsableManimColor) -> None:
+        """Append a ManimColor to the end of the list."""
+        color = ManimColorList(color)
+        self.resize((self.shape[0] + color.shape[0], 4), refcheck=False)
+        self[-color.shape[0] :, :] = color
+
+    def to_hex_strings(self) -> list[str]:
+        return [ManimColor(c).to_hex() for c in self]
+
+    def __eq__(self, other):
+        other = ManimColorList(other)
+        return np.all(np.array_equal(self, other))
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self) -> int:
+        s = "".join(self.to_hex_strings())
+        return hash(s)
 
 
 RGBA = ManimColor
@@ -1240,8 +980,7 @@ ManimColorT = TypeVar("ManimColorT", bound=ManimColor)
 
 
 def color_to_rgb(color: ParsableManimColor) -> RGB_Array_Float:
-    """Helper function for use in functional style programming.
-    Refer to :meth:`ManimColor.to_rgb`.
+    """Transform any form of 'color' to an RGB float array.(RGB from 0.0 to 1.0)
 
     Parameters
     ----------
@@ -1257,8 +996,7 @@ def color_to_rgb(color: ParsableManimColor) -> RGB_Array_Float:
 
 
 def color_to_rgba(color: ParsableManimColor, alpha: float = 1.0) -> RGBA_Array_Float:
-    """Helper function for use in functional style programming. Refer to
-    :meth:`ManimColor.to_rgba_with_alpha`.
+    """Transform any form of 'color' to an RGBA float array.(RGB from 0.0 to 1.0)
 
     Parameters
     ----------
@@ -1273,12 +1011,11 @@ def color_to_rgba(color: ParsableManimColor, alpha: float = 1.0) -> RGBA_Array_F
     RGBA_Array_Float
         The corresponding RGBA float array.
     """
-    return ManimColor(color).to_rgba_with_alpha(alpha)
+    return ManimColor(color, alpha).to_rgba()
 
 
 def color_to_int_rgb(color: ParsableManimColor) -> RGB_Array_Int:
-    """Helper function for use in functional style programming. Refer to
-    :meth:`ManimColor.to_int_rgb`.
+    """Transform any form of 'color' to an RGB integer array.(RGB from 0 to 255)
 
     Parameters
     ----------
@@ -1294,8 +1031,7 @@ def color_to_int_rgb(color: ParsableManimColor) -> RGB_Array_Int:
 
 
 def color_to_int_rgba(color: ParsableManimColor, alpha: float = 1.0) -> RGBA_Array_Int:
-    """Helper function for use in functional style programming. Refer to
-    :meth:`ManimColor.to_int_rgba_with_alpha`.
+    """Transform any form of 'color' to an RGBA integer array.(RGB from 0 to 255)
 
     Parameters
     ----------
@@ -1310,7 +1046,7 @@ def color_to_int_rgba(color: ParsableManimColor, alpha: float = 1.0) -> RGBA_Arr
     RGBA_Array_Int
         The corresponding RGBA integer array.
     """
-    return ManimColor(color).to_int_rgba_with_alpha(alpha)
+    return ManimColor(color, alpha).to_int_rgba()
 
 
 def rgb_to_color(
@@ -1549,6 +1285,7 @@ def get_shaded_rgb(
 
 __all__ = [
     "ManimColor",
+    "ManimColorList",
     "ManimColorDType",
     "ParsableManimColor",
     "color_to_rgb",

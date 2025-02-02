@@ -65,8 +65,7 @@ class SingleStringMathTex(SVGMobject):
         color: ParsableManimColor | None = None,
         **kwargs,
     ):
-        if color is None:
-            color = VMobject().color
+        color = ManimColor(color)
 
         self._font_size = font_size
         self.organize_left_to_right = organize_left_to_right
@@ -87,14 +86,15 @@ class SingleStringMathTex(SVGMobject):
             should_center=should_center,
             stroke_width=stroke_width,
             height=height,
-            color=color,
+            fill_color=color,
+            stroke_color=color,
             path_string_config={
                 "should_subdivide_sharp_curves": True,
                 "should_remove_null_curves": True,
             },
             **kwargs,
         )
-        self.init_colors()
+        # self.init_colors()
 
         # used for scaling via font_size.setter
         self.initial_height = self.height
@@ -213,7 +213,7 @@ class SingleStringMathTex(SVGMobject):
         for submobject in self.submobjects:
             # needed to preserve original (non-black)
             # TeX colors of individual submobjects
-            if submobject.color != BLACK:
+            if submobject.fill_color != BLACK:
                 continue
             submobject.color = self.color
             if config.renderer == RendererType.OPENGL:

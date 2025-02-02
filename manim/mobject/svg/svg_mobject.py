@@ -72,12 +72,6 @@ class SVGMobject(VMobject, metaclass=ConvertToOpenGL):
     stroke_width
         The stroke width of the mobject. If ``None`` (the default),
         the stroke width values set in the SVG file are used.
-    svg_default
-        A dictionary in which fallback values for unspecified
-        properties of elements in the SVG file are defined. If
-        ``None`` (the default), ``color``, ``opacity``, ``fill_color``
-        ``fill_opacity``, ``stroke_color``, and ``stroke_opacity``
-        are set to ``None``, and ``stroke_width`` is set to 0.
     path_string_config
         A dictionary with keyword arguments passed to
         :class:`.VMobjectFromSVGPath` used for importing path elements.
@@ -98,19 +92,16 @@ class SVGMobject(VMobject, metaclass=ConvertToOpenGL):
         should_center: bool = True,
         height: float | None = 2,
         width: float | None = None,
-        color: str | None = None,
-        opacity: float | None = None,
         fill_color: str | None = None,
         fill_opacity: float | None = None,
         stroke_color: str | None = None,
         stroke_opacity: float | None = None,
         stroke_width: float | None = None,
-        svg_default: dict | None = None,
         path_string_config: dict | None = None,
         use_svg_cache: bool = True,
         **kwargs,
     ):
-        super().__init__(color=None, stroke_color=None, fill_color=None, **kwargs)
+        super().__init__(**kwargs)
 
         # process keyword arguments
         self.file_name = Path(file_name) if file_name is not None else None
@@ -118,25 +109,6 @@ class SVGMobject(VMobject, metaclass=ConvertToOpenGL):
         self.should_center = should_center
         self.svg_height = height
         self.svg_width = width
-        self.color = color
-        self.opacity = opacity
-        self.fill_color = fill_color
-        self.fill_opacity = fill_opacity
-        self.stroke_color = stroke_color
-        self.stroke_opacity = stroke_opacity
-        self.stroke_width = stroke_width
-
-        if svg_default is None:
-            svg_default = {
-                "color": None,
-                "opacity": None,
-                "fill_color": None,
-                "fill_opacity": None,
-                "stroke_width": 0,
-                "stroke_color": None,
-                "stroke_opacity": None,
-            }
-        self.svg_default = svg_default
 
         if path_string_config is None:
             path_string_config = {}
@@ -181,7 +153,7 @@ class SVGMobject(VMobject, metaclass=ConvertToOpenGL):
         """
         return (
             self.__class__.__name__,
-            self.svg_default,
+            self.get_style(simple=True),
             self.path_string_config,
             self.file_name,
             config.renderer,
@@ -238,21 +210,13 @@ class SVGMobject(VMobject, metaclass=ConvertToOpenGL):
 
     def generate_config_style_dict(self) -> dict[str, str]:
         """Generate a dictionary holding the default style information."""
-        keys_converting_dict = {
-            "fill": ("color", "fill_color"),
-            "fill-opacity": ("opacity", "fill_opacity"),
-            "stroke": ("color", "stroke_color"),
-            "stroke-opacity": ("opacity", "stroke_opacity"),
-            "stroke-width": ("stroke_width",),
-        }
-        svg_default_dict = self.svg_default
-        result = {}
-        for svg_key, style_keys in keys_converting_dict.items():
-            for style_key in style_keys:
-                if svg_default_dict[style_key] is None:
-                    continue
-                result[svg_key] = str(svg_default_dict[style_key])
-        return result
+        config_style_dict = {}
+        config_style_dict["fill"] = self.fill_color.to_hex_strings()[0]
+        config_style_dict["fill-opacity"] = str(self.fill_color.opacity[0])
+        config_style_dict["stroke"] = self.stroke_color.to_hex_strings()[0]
+        config_style_dict["stroke-opacity"] = str(self.stroke_color.opacity[0])
+        config_style_dict["stroke-width"] = str(self.stroke_width)
+        return config_style_dict
 
     def get_mobjects_from(self, svg: se.SVG) -> list[VMobject]:
         """Convert the elements of the SVG to a list of mobjects.

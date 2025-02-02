@@ -183,7 +183,7 @@ class OpenGLMobject:
         self.init_updaters()
         # self.init_event_listners()
         self.init_points()
-        self.color = ManimColor.parse(color)
+        self.color = ManimColor(color)
         self.init_colors()
 
         self.shader_indices = None
@@ -2133,7 +2133,7 @@ class OpenGLMobject:
         # Recurse to submobjects differently from how set_rgba_array
         # in case they implement set_color differently
         if color is not None:
-            self.color: ManimColor = ManimColor.parse(color)
+            self.color: ManimColor = ManimColor(color)
         if opacity is not None:
             self.opacity = opacity
         if recurse:

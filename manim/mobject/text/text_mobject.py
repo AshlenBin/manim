@@ -427,7 +427,7 @@ class Text(SVGMobject):
         text: str,
         fill_opacity: float = 1.0,
         stroke_width: float = 0,
-        color: ParsableManimColor | None = None,
+        color: ParsableManimColor = config.background_color.invert(),
         font_size: float = DEFAULT_FONT_SIZE,
         line_spacing: float = -1,
         font: str = "",
@@ -508,7 +508,7 @@ class Text(SVGMobject):
         else:
             self.line_spacing = self._font_size + self._font_size * self.line_spacing
 
-        color: ManimColor = ManimColor(color) if color else VMobject().color
+        color = ManimColor(color)
         file_name = self._text2svg(color.to_hex())
         PangoUtils.remove_last_M(file_name)
         super().__init__(
@@ -1171,7 +1171,7 @@ class MarkupText(SVGMobject):
         text: str,
         fill_opacity: float = 1,
         stroke_width: float = 0,
-        color: ParsableManimColor | None = None,
+        color: ParsableManimColor = config.background_color.invert(),
         font_size: float = DEFAULT_FONT_SIZE,
         line_spacing: int = -1,
         font: str = "",
@@ -1235,12 +1235,15 @@ class MarkupText(SVGMobject):
         else:
             self.line_spacing = self._font_size + self._font_size * self.line_spacing
 
-        color: ManimColor = ManimColor(color) if color else VMobject().color
+        color = ManimColor(color)
         file_name = self._text2svg(color)
 
         PangoUtils.remove_last_M(file_name)
+        print(config.background_color)
+        print(color)
         super().__init__(
             file_name,
+            fill_color=color,
             fill_opacity=fill_opacity,
             stroke_width=stroke_width,
             height=height,
@@ -1312,13 +1315,15 @@ class MarkupText(SVGMobject):
             self.set_color_by_gradient(*self.gradient)
         for col in colormap:
             self.chars[
-                col["start"] - col["start_offset"] : col["end"]
+                col["start"]
+                - col["start_offset"] : col["end"]
                 - col["start_offset"]
                 - col["end_offset"]
             ].set_color(self._parse_color(col["color"]))
         for grad in gradientmap:
             self.chars[
-                grad["start"] - grad["start_offset"] : grad["end"]
+                grad["start"]
+                - grad["start_offset"] : grad["end"]
                 - grad["start_offset"]
                 - grad["end_offset"]
             ].set_color_by_gradient(
@@ -1366,9 +1371,8 @@ class MarkupText(SVGMobject):
         hasher.update(id_str.encode())
         return hasher.hexdigest()[:16]
 
-    def _text2svg(self, color: ParsableManimColor | None):
+    def _text2svg(self, color: ManimColor):
         """Convert the text to SVG using Pango."""
-        color = ManimColor(color)
         size = self._font_size
         line_spacing = self.line_spacing
         size /= TEXT2SVG_ADJUSTMENT_FACTOR

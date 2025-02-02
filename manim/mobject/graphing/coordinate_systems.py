@@ -508,10 +508,9 @@ class CoordinateSystem:
         """
         line_config = line_config if line_config is not None else {}
 
-        if color is None:
-            color = VMobject().color
+        color = ManimColor(color)
 
-        line_config["color"] = ManimColor.parse(color)
+        line_config["color"] = ManimColor(color)
         line_config["stroke_width"] = stroke_width
 
         axis = self.get_axis(index)
@@ -1917,6 +1916,7 @@ class Axes(VGroup, CoordinateSystem, metaclass=ConvertToOpenGL):
         x_axis_config: dict | None = None,
         y_axis_config: dict | None = None,
         tips: bool = True,
+        color: ParsableManimColor = config.background_color.invert(),
         **kwargs: Any,
     ) -> None:
         VGroup.__init__(self, **kwargs)
@@ -1973,7 +1973,7 @@ class Axes(VGroup, CoordinateSystem, metaclass=ConvertToOpenGL):
         # NumberPlane below
         self.axes = VGroup(self.x_axis, self.y_axis)
         self.add(*self.axes)
-
+        self.set_color(color)
         # finds the middle-point on each axis
         lines_center_point = [
             axis.scaling.function((axis.x_range[1] + axis.x_range[0]) / 2)

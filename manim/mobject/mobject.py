@@ -98,7 +98,6 @@ class Mobject:
 
     def __init__(
         self,
-        color: ParsableManimColor | list[ParsableManimColor] = WHITE,
         name: str | None = None,
         dim: int = 3,
         target=None,
@@ -112,11 +111,9 @@ class Mobject:
         self.submobjects = []
         self.updaters: list[Updater] = []
         self.updating_suspended = False
-        self.color = ManimColor.parse(color)
 
         self.reset_points()
         self.generate_points()
-        self.init_colors()
 
     def _assert_valid_submobjects(self, submobjects: Iterable[Mobject]) -> Self:
         """Check that all submobjects are actually instances of
@@ -1866,7 +1863,7 @@ class Mobject:
             for submob in self.submobjects:
                 submob.set_color(color, family=family)
 
-        self.color = ManimColor.parse(color)
+        self.color = ManimColor(color)
         return self
 
     def set_color_by_gradient(self, *colors: ParsableManimColor) -> Self:
@@ -1876,7 +1873,7 @@ class Mobject:
         colors
             The colors to use for the gradient. Use like `set_color_by_gradient(RED, BLUE, GREEN)`.
 
-        self.color = ManimColor.parse(color)
+        self.color = ManimColor(color)
         return self
         """
         self.set_submobject_colors_by_gradient(*colors)
