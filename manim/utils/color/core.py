@@ -112,7 +112,6 @@ class ManimColor(np.ndarray):
         alpha: float | None = None,
         scale: int = 255,
     ) -> None:
-
         if (
             isinstance(value, (Sequence, np.ndarray))
             and not isinstance(value, str)
@@ -207,21 +206,6 @@ class ManimColor(np.ndarray):
         if isinstance(value, (np.ndarray, Sequence)):
             return ManimColorList([(v, v, v, opacity) for v in value])
 
-    @classmethod
-    def _construct_from_space(
-        cls,
-        _space: (
-            npt.NDArray[ManimFloat]
-            | tuple[float, float, float]
-            | tuple[float, float, float, float]
-        ),
-    ) -> Self:
-        """This function is used as a proxy for constructing a color with an internal
-        value. This can be used by subclasses to hook into the construction of new
-        objects using the internal value format.
-        """
-        return cls(_space)
-
     @staticmethod
     def _internal_from_hex_string(hex_: str) -> ManimColorInternal:
         """Internal function for converting a hex string into the internal representation
@@ -243,6 +227,7 @@ class ManimColor(np.ndarray):
         ManimColorInternal
             Internal color representation
         """
+        alpha = 1.0
         if len(hex_) in (3, 4):
             hex_ = "".join([x * 2 for x in hex_])
         if len(hex_) == 6:
@@ -259,7 +244,7 @@ class ManimColor(np.ndarray):
                 ((tmp >> 24) & 0xFF) / 255,
                 ((tmp >> 16) & 0xFF) / 255,
                 ((tmp >> 8) & 0xFF) / 255,
-                1,
+                alpha,
             ),
             dtype=ManimColorDType,
         )
