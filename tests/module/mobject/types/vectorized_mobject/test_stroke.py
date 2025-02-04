@@ -7,7 +7,7 @@ from manim.mobject.vector_field import StreamLines
 
 def test_stroke_props_in_ctor():
     m = VMobject(stroke_color=C.ORANGE, stroke_width=10)
-    assert m.stroke_color.to_hex() == C.ORANGE.to_hex()
+    assert m.stroke_colors.to_hex() == C.ORANGE.to_hex()
     assert m.stroke_width == 10
 
 
@@ -16,7 +16,7 @@ def test_set_stroke():
     m.set_stroke(color=C.ORANGE, width=2, opacity=0.8)
     assert m.stroke_width == 2
     assert m.stroke_opacity == 0.8
-    assert m.stroke_color.to_hex() == C.ORANGE.to_hex()
+    assert m.stroke_colors.to_hex() == C.ORANGE.to_hex()
 
 
 def test_set_background_stroke():

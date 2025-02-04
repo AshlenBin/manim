@@ -10,13 +10,7 @@ from typing_extensions import Self
 
 from manim import logger
 from manim._config import config
-from manim.constants import (
-    DOWN,
-    LEFT,
-    RIGHT,
-    SMALL_BUFF,
-    UP,
-)
+from manim.constants import DOWN, LEFT, RIGHT, SMALL_BUFF, UP
 from manim.mobject.geometry.line import Line
 from manim.mobject.geometry.polygram import RoundedRectangle
 from manim.mobject.mobject import Mobject
@@ -147,7 +141,7 @@ class BackgroundRectangle(SurroundingRectangle):
     def get_fill_color(self) -> ManimColor:
         # The type of the color property is set to Any using the property decorator
         # vectorized_mobject.py#L571
-        temp_color: ManimColor = self.color
+        temp_color: ManimColor = self.colors
         return temp_color
 
 

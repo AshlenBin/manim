@@ -28,4 +28,4 @@ def test_code_initialization_from_file():
         background_config={"fill_color": "#101010"},
     )
     assert len(rendered_code.code_lines) == len(rendered_code.line_numbers)
-    assert rendered_code.background.fill_color == ManimColor("#101010")
+    assert rendered_code.background.fill_colors == ManimColor("#101010")

@@ -41,14 +41,14 @@ def test_background_color():
 
 def test_set_color():
     m = Mobject()
-    assert m.color.to_hex() == "#FFFFFF"
+    assert m.colors.to_hex() == "#FFFFFF"
     m.set_color(BLACK)
-    assert m.color.to_hex() == "#000000"
+    assert m.colors.to_hex() == "#000000"
 
     m = VMobject()
-    assert m.color.to_hex() == "#FFFFFF"
+    assert m.colors.to_hex() == "#FFFFFF"
     m.set_color(BLACK)
-    assert m.color.to_hex() == "#000000"
+    assert m.colors.to_hex() == "#000000"
 
 
 def test_color_hash():

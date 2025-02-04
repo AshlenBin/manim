@@ -116,7 +116,7 @@ class VectorField(VGroup):
             self.pos_to_color = lambda pos: rgb_to_color(self.pos_to_rgb(pos))
         else:
             self.single_color = True
-            self.color = ManimColor(color)
+            self.colors = ManimColor(color)
         self.submob_movement_updater = None
 
     @staticmethod
@@ -628,7 +628,7 @@ class ArrowVectorField(VectorField):
         vect = Vector(output, **self.vector_config)
         vect.shift(point)
         if self.single_color:
-            vect.set_color(self.color)
+            vect.set_color(self.colors)
         else:
             vect.set_color(self.pos_to_color(point))
         return vect
@@ -830,7 +830,7 @@ class StreamLines(VectorField):
             line.set_points_smoothly(points[::step])
             if self.single_color:
                 line.set_stroke(
-                    color=self.color, width=self.stroke_width, opacity=opacity
+                    color=self.colors, width=self.stroke_width, opacity=opacity
                 )
             else:
                 if config.renderer == RendererType.OPENGL:

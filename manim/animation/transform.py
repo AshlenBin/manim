@@ -108,7 +108,7 @@ class Transform(Animation):
                 anims = []
                 for idx, angle in enumerate(examples):
                     left_c = left.copy().shift((3 - idx) * UP)
-                    left_c.fill_color = colors[idx]
+                    left_c.fill_colors = colors[idx]
                     right_c = left_c.copy().shift(4 * RIGHT)
                     path_arc = make_arc_path(left_c.get_center(), right_c.get_center(),
                                              arc_angle=angle * DEGREES)

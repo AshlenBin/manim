@@ -183,7 +183,7 @@ class OpenGLMobject:
         self.init_updaters()
         # self.init_event_listners()
         self.init_points()
-        self.color = ManimColor(color)
+        self.colors = ManimColor(color)
         self.init_colors()
 
         self.shader_indices = None
@@ -297,10 +297,10 @@ class OpenGLMobject:
 
             >>> from manim import Square, GREEN
             >>> Square.set_default(color=GREEN, fill_opacity=0.25)
-            >>> s = Square(); s.color, s.fill_opacity
+            >>> s = Square(); s.colors, s.fill_opacity
             (ManimColor('#83C167'), 0.25)
             >>> Square.set_default()
-            >>> s = Square(); s.color, s.fill_opacity
+            >>> s = Square(); s.colors, s.fill_opacity
             (ManimColor('#FFFFFF'), 0.0)
 
         .. manim:: ChangedDefaultTextcolor
@@ -335,7 +335,7 @@ class OpenGLMobject:
 
         Gets called upon creation
         """
-        self.set_color(self.color, self.opacity)
+        self.set_color(self.colors, self.opacity)
 
     def init_points(self) -> object:
         """Initializes :attr:`points` and therefore the shape.
@@ -2133,7 +2133,7 @@ class OpenGLMobject:
         # Recurse to submobjects differently from how set_rgba_array
         # in case they implement set_color differently
         if color is not None:
-            self.color: ManimColor = ManimColor(color)
+            self.colors: ManimColor = ManimColor(color)
         if opacity is not None:
             self.opacity = opacity
         if recurse:

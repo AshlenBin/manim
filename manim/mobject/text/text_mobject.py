@@ -668,7 +668,7 @@ class Text(SVGMobject):
         t2g = t2g if t2g else self.t2g
         for word, gradient in list(t2g.items()):
             for start, end in self._find_indexes(word, self.text):
-                self.chars[start:end].set_color_by_gradient(*gradient)
+                self.chars[start:end].set_color_by_gradient(gradient)
 
     def _text2hash(self, color: ManimColor):
         """Generates ``sha256`` hash for file name."""
@@ -1312,23 +1312,21 @@ class MarkupText(SVGMobject):
             each.points = np.array(closed_curve_points, ndmin=2)
 
         if self.gradient:
-            self.set_color_by_gradient(*self.gradient)
+            self.set_color_by_gradient(self.gradient)
         for col in colormap:
             self.chars[
                 col["start"]
                 - col["start_offset"] : col["end"]
                 - col["start_offset"]
                 - col["end_offset"]
-            ].set_color(self._parse_color(col["color"]))
+            ].set_color(ManimColor(col["color"]))
         for grad in gradientmap:
             self.chars[
                 grad["start"]
                 - grad["start_offset"] : grad["end"]
                 - grad["start_offset"]
                 - grad["end_offset"]
-            ].set_color_by_gradient(
-                *(self._parse_color(grad["from"]), self._parse_color(grad["to"]))
-            )
+            ].set_color_by_gradient((ManimColor(grad["from"]), ManimColor(grad["to"])))
         # anti-aliasing
         if height is None and width is None:
             self.scale(TEXT_MOB_SCALE_FACTOR)
@@ -1463,13 +1461,6 @@ class MarkupText(SVGMobject):
             "<gradient[^>]+>(.+?)</gradient>", r"\1", self.text, count=0, flags=re.S
         )
         return gradientmap
-
-    def _parse_color(self, col):
-        """Parse color given in ``<color>`` or ``<gradient>`` tags."""
-        if re.match("#[0-9a-f]{6}", col):
-            return col
-        else:
-            return ManimColor(col).to_hex()
 
     def _extract_color_tags(self):
         """Used to determine which parts (if any) of the string should be formatted

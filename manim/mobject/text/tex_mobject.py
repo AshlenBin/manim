@@ -213,9 +213,9 @@ class SingleStringMathTex(SVGMobject):
         for submobject in self.submobjects:
             # needed to preserve original (non-black)
             # TeX colors of individual submobjects
-            if submobject.fill_color != BLACK:
+            if submobject.fill_colors != BLACK:
                 continue
-            submobject.color = self.color
+            submobject.colors = self.colors
             if config.renderer == RendererType.OPENGL:
                 submobject.init_colors()
             elif config.renderer == RendererType.CAIRO:

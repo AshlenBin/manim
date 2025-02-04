@@ -269,7 +269,7 @@ class DrawBorderThenFill(Animation):
         if self.stroke_color:
             return self.stroke_color
         elif vmobject.get_stroke_width() > 0:
-            return vmobject.get_stroke_color()
+            return vmobject.get_stroke_colors()
         return vmobject.get_color()
 
     def get_all_mobjects(self) -> Sequence[Mobject]:

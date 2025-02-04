@@ -113,8 +113,8 @@ class ManimColor(np.ndarray):
         scale: int = 255,
     ) -> None:
         if (
-            isinstance(value, (Sequence, np.ndarray))
-            and not isinstance(value, str)
+            not isinstance(value, str)
+            and isinstance(value, (Sequence, np.ndarray))
             and not all(isinstance(c, (int, float)) for c in value)
         ):
             """自动识别输入的是“颜色”还是“颜色列表”
@@ -182,16 +182,16 @@ class ManimColor(np.ndarray):
             _internal_value[3] = alpha
         return _internal_value.view(cls).copy()
 
-    def __array_finalize__(self, obj: Self) -> None:
-        # 【功能】[0~1]越界截断
-        if obj is None:
-            return
-        if self.dtype == bool:
-            # self<0花式索引会创建新的ManimColor对象，导致无限递归
-            return
+    # def __array_finalize__(self, obj: Self) -> None:
+    #     # 【功能|删除】[0~1]越界截断。因为经常要color*255进行转换，所以不再自动截断了
+    #     if obj is None:
+    #         return
+    #     if self.dtype == bool:
+    #         # self<0花式索引会创建新的ManimColor对象，导致无限递归
+    #         return
 
-        self[self < 0] = 0
-        self[self > 1] = 1
+    #     self[self < 0] = 0
+    #     self[self > 1] = 1
 
     def gray(value: int | Sequence[int] | np.ndarray[int], opacity: float = 1.0):
         """Create a gray color with the given value.
@@ -205,6 +205,17 @@ class ManimColor(np.ndarray):
             return ManimColor([value, value, value, opacity])
         if isinstance(value, (np.ndarray, Sequence)):
             return ManimColorList([(v, v, v, opacity) for v in value])
+
+    def _fast_init(value: Sequence[float, float, float, float]) -> ManimColor:
+        """快速初始化，不检查参数，不检查类型，直接赋值，供内部开发使用
+        只能传入[r,g,b,a]形式的序列，数据格式为[0~1]范围
+        """
+        if isinstance(value, ManimColorList):
+            return value.view(ManimColor).copy()
+        if isinstance(value, ManimColor):
+            return value.copy()
+
+        return np.array(value, dtype=ManimColorDType).view(ManimColor).copy()
 
     @staticmethod
     def _internal_from_hex_string(hex_: str) -> ManimColorInternal:
@@ -536,10 +547,25 @@ class ManimColor(np.ndarray):
                 return dark
             return BLACK
 
-    @property
-    def opacity(self) -> float:
-        """获取颜色的不透明度"""
+    def get_opacity(self) -> float:
         return self[3]
+
+    def set_opacity(self, opacity: float) -> Self:
+        self[3] = opacity
+
+    def __mod__(self, other):
+        """自定义%运算符，用于修改不透明度，
+        如BLUE%0.5，返回 不透明度为0.5的BLUE，即ManimColor(BLUE,opacity=0.5)
+        """
+        if not isinstance(other, (int, float)) or other > 1 or other < 0:
+            raise ValueError(
+                "operator『%』of 'ManimColor' is is used to modify the opacity of a color. Please operate with a float between 0 and 1.For example, BLUE%0.5"
+            )
+        result = self.copy()
+        result[3] = other
+        return result
+
+    opacity = property(get_opacity, set_opacity)
 
     def into(self, class_type: type[ManimColorT]) -> ManimColorT:
         """Convert the current color into a different colorspace given by ``class_type``,
@@ -557,7 +583,7 @@ class ManimColor(np.ndarray):
             A new color object of type ``class_type`` and the same
             :attr:`_internal_value` as the original color.
         """
-        return class_type(self, scale=1)
+        return class_type(self)
 
     @classmethod
     def from_hsv(
@@ -579,8 +605,8 @@ class ManimColor(np.ndarray):
             array.
         """
         rgb = colorsys.hsv_to_rgb(*hsv)
-
-        return ManimColor(rgb, alpha, scale=1)
+        rgba = np.append(rgb, alpha)
+        return ManimColor._fast_init(rgba)
 
     @classmethod
     def from_hsl(
@@ -602,7 +628,8 @@ class ManimColor(np.ndarray):
             array.
         """
         rgb = colorsys.hls_to_rgb(*hsl)
-        return ManimColor(rgb, alpha, scale=1)
+        rgba = np.append(rgb, alpha)
+        return ManimColor._fast_init(rgba)
 
     @overload
     @classmethod
@@ -710,6 +737,19 @@ class ManimColor(np.ndarray):
         result[3] = alpha
         return result
 
+    def __mul__(self, other: int | float | Self) -> Self | np.ndarray:
+        if isinstance(other, float):
+            # 如果与float相乘，比如color1*0.2+color2*0.8，说明在做颜色插值，返回ManimColor，带有[0,1]自动越界截断
+            return np.multiply(self, other)
+        else:
+            # 如果与int相乘，比如color*255，说明在做数值范围转换，返回np.ndarray，不做[0,1]越界截断
+            # 如果与其他类型相乘，奇葩操作，返回np.ndarray，不做[0,1]越界截断
+            arr = self.view(np.ndarray)
+            return arr * other
+
+    def __rmul__(self, other: int | float | Self) -> Self | np.ndarray:
+        return self * other
+
     def __invert__(self) -> Self:
         return self.invert()
 
@@ -750,11 +790,15 @@ class ManimColorList(np.ndarray):
         opacity: float | Sequence[float] | None = None,
     ):
         if isinstance(colors, ManimColorList):
+            if (
+                colors.ndim == 1
+            ):  # colors[0]索引会导致维度变成1，而类型依旧是ManimColorList
+                colors = np.expand_dims(colors, axis=0)
             return colors.copy()
         if colors is None or (
             isinstance(colors, (np.ndarray, Sequence)) and len(colors) == 0
         ):
-            return np.array([], dtype=ManimColorDType).view(cls).copy()
+            return np.zeros((0, 4), dtype=ManimColorDType).view(cls).copy()
         if isinstance(colors, ManimColor):
             obj = np.expand_dims(colors, axis=0).view(cls)
             return obj.copy()
@@ -768,9 +812,16 @@ class ManimColorList(np.ndarray):
             )
 
         if isinstance(colors, np.ndarray):
-            # 输入[1,2,3]变为[[1,2,3]]
-            if len(colors.shape) == 1:
+            if colors.dtype == bool:
+                raise Warning(
+                    "You have converted a boolean array to a ManimColorList. Is this intended?"
+                )
+            if colors.ndim == 1:
+                # 输入[1,2,3]变为[[1,2,3]]
                 colors = [colors]
+            elif colors.ndim > 2:
+                raise ValueError("'colors' Array must have exactly 1 or 2 dimensions.")
+
         elif isinstance(colors, Sequence):
             # 输入[1,2,3]变为[[1,2,3]]，输入[1,2,'#']保持不变
             if all(isinstance(c, (int, float)) for c in colors):
@@ -788,12 +839,40 @@ class ManimColorList(np.ndarray):
         return obj.copy()
 
     # def __array_finalize__(self, obj):
-    #     pass
+    #     #【功能|删除】[0~1]越界截断。因为经常要color*255进行转换，所以不再自动截断了
+    #     if obj is None:
+    #         return
+    #     if self.dtype == bool:
+    #         return
+    #     self[self > 1] = 1
+    #     self[self < 0] = 0
 
-    @property
-    def opacity(self) -> np.ndarray:
+    def set_opacity(self, opacity: float | Sequence[float]) -> None:
+        # 设置所有颜色的不透明度
+        if isinstance(opacity, (int, float)):
+            self[:, 3] = opacity
+        else:
+            if len(opacity) != len(self):
+                raise ValueError("length of opacity must match length of color")
+            self[:, 3] = opacity
+
+    def get_opacity(self) -> np.ndarray:
         # 获取所有颜色的不透明度
-        return self[:, 3]
+        return self[:, 3].view(np.ndarray).copy()
+
+    def __mod__(self, other):
+        """自定义%运算符，用于修改不透明度，
+        如BLUE%0.5，返回 不透明度为0.5的BLUE，即ManimColor(BLUE,opacity=0.5)
+        """
+        if not isinstance(other, (int, float)) or other > 1 or other < 0:
+            raise ValueError(
+                "operator『%』of 'ManimColorList' is is used to modify the opacity of colors. Please operate with a float between 0 and 1.For example, BLUE%0.5"
+            )
+        result = self.copy()
+        result[:, 3] = other
+        return result
+
+    opacity = property(get_opacity, set_opacity)
 
     def append(self, color: ParsableManimColor) -> None:
         """Append a ManimColor to the end of the list."""
@@ -802,7 +881,13 @@ class ManimColorList(np.ndarray):
         self[-color.shape[0] :, :] = color
 
     def to_hex_strings(self) -> list[str]:
-        return [ManimColor(c).to_hex() for c in self]
+        rgbas = (self * 255).astype(int)
+
+        def hex_str(rgba):
+            tmp = f"#{rgba[0]:02X}" f"{rgba[1]:02X}" f"{rgba[2]:02X}" f"{rgba[3]:02X}"
+            return tmp
+
+        return [hex_str(rgba) for rgba in rgbas]
 
     def __eq__(self, other):
         other = ManimColorList(other)
@@ -810,6 +895,19 @@ class ManimColorList(np.ndarray):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def __mul__(self, other: int | float | Self) -> Self | np.ndarray:
+        if isinstance(other, float):
+            # 如果与float相乘，比如color1*0.2+color2*0.8，说明在做颜色插值，返回ManimColor，带有[0,1]自动越界截断
+            return np.multiply(self, other)
+        else:
+            # 如果与int相乘，比如color*255，说明在做数值范围转换，返回np.ndarray，不做[0,1]越界截断
+            # 如果与其他类型相乘，奇葩操作，返回np.ndarray，不做[0,1]越界截断
+            arr = self.view(np.ndarray)
+            return arr * other
+
+    def __rmul__(self, other: int | float | Self) -> Self | np.ndarray:
+        return self * other
 
     def __hash__(self) -> int:
         s = "".join(self.to_hex_strings())
@@ -962,6 +1060,75 @@ to a :class:`ManimColor` in Manim.
 
 
 ManimColorT = TypeVar("ManimColorT", bound=ManimColor)
+
+
+def update_ColorList(
+    old_colors: Sequence[ManimColor] | np.ndarray | None = None,
+    new_colors: Sequence[ManimColor] | np.ndarray | None = None,
+    opacity: float | Sequence[float] | None = None,
+    sheen_factor: float = 0.0,
+    is_single_color: bool = False,  # 传入的new_colors是否是单色，是则应用到所有旧颜色上(新颜色数量与旧颜色一致，若旧颜色为空则返回空)，否则[[单色],]替换掉旧颜色
+) -> ManimColorList:
+    """
+    First arg can be either a color, or a tuple/list of colors.
+    Likewise, opacity can either be a float, or a tuple of floats.
+    If self.sheen_factor is not zero, and only
+    one color was passed in, a second slightly light color
+    will automatically be added for the gradient
+    """
+    if old_colors is None or len(old_colors) == 0:
+        if is_single_color:
+            return ManimColorList(None)
+        return ManimColorList(new_colors, opacity)
+    # old_colors为空的情况已经排除，下面old_colors均不为空
+    if new_colors is None:
+        if opacity is None:
+            # if new_colors和opacity都为空，then 返回旧颜色
+            return ManimColorList(old_colors)
+        else:
+            # if 只传入了opacity，then 修改旧颜色的opacity
+            colors = old_colors.copy()  # np.ndarrays是浅拷贝，所以要避免修改原数组
+            colors[:, 3] = opacity
+            return ManimColorList(colors)
+
+    if opacity is None:
+        # if 只传入了new_colors，then 检查new_colors是否是RGBA，如果不是则保留原先的不透明度
+        if isinstance(new_colors, str):
+            pass
+        elif isinstance(new_colors, np.ndarray):
+            if new_colors.shape[-1] == 3:
+                opacity = old_colors.opacity[0]
+                # 绝大多数情况下用户设置的不透明度都只有一个，所以这里只取首个
+                # 如果用户想要有多个不透明度，那么只能自己传入值，系统默认不保留
+        elif isinstance(new_colors, Sequence):
+            if (
+                all(isinstance(c, (int, float)) for c in new_colors)
+                and len(new_colors) == 3
+            ):
+                opacity = old_colors.opacity[0]
+            else:
+                # 类似[(1,2,3),(1,2,3,0.5)]这样的输入，只要出现一个RGBA，就不保留不透明度
+                # 即输出：[(1,2,3,1),(1,2,3,0.5)]，(1,2,3,1)的不透明度1是默认的
+                has_rgba = False
+                for c in new_colors:
+                    if isinstance(c, str):
+                        continue
+                    if len(c) == 4:
+                        has_rgba = True
+                if not has_rgba:
+                    opacity = old_colors.opacity[0]
+
+        colors = old_colors.copy()  # np.ndarrays是浅拷贝，所以要避免修改原数组
+    colors = ManimColorList(new_colors, opacity)
+    if is_single_color:
+        colors = np.repeat(colors, len(old_colors), axis=0)
+
+    if sheen_factor != 0 and len(colors) == 1:  # 光泽效果
+        light_colors = colors[0]
+        light_colors[:3] += sheen_factor
+        np.clip(light_colors, 0, 1, out=light_colors)
+        colors.append(light_colors)
+    return colors
 
 
 def color_to_rgb(color: ParsableManimColor) -> RGB_Array_Float:
@@ -1126,7 +1293,7 @@ def invert_color(color: ManimColorT) -> ManimColorT:
 
 
 def color_gradient(
-    reference_colors: Sequence[ParsableManimColor],
+    reference_colors: ParsableManimColor,
     length_of_output: int,
 ) -> list[ManimColor] | ManimColor:
     """Create a list of colors interpolated between the input array of colors with a
@@ -1141,24 +1308,26 @@ def color_gradient(
 
     Returns
     -------
-    list[ManimColor] | ManimColor
+    ManimColorList
         A :class:`ManimColor` or a list of interpolated :class:`ManimColor`'s.
     """
+    reference_colors = ManimColorList(reference_colors)
     if length_of_output == 0:
-        return ManimColor(reference_colors[0])
+        return reference_colors[0]
     if len(reference_colors) == 1:
-        return [ManimColor(reference_colors[0])] * length_of_output
+        return np.repeat(reference_colors, length_of_output, axis=0)
     rgbs = [color_to_rgb(color) for color in reference_colors]
     alphas = np.linspace(0, (len(rgbs) - 1), length_of_output)
     floors = alphas.astype("int")
-    alphas_mod1 = alphas % 1
-    # End edge case
-    alphas_mod1[-1] = 1
-    floors[-1] = len(rgbs) - 2
-    return [
-        rgb_to_color((rgbs[i] * (1 - alpha)) + (rgbs[i + 1] * alpha))
-        for i, alpha in zip(floors, alphas_mod1)
-    ]
+    floors[-1] -= 1  # 如果不处理边界的话，最右边的颜色的“左参考值”是它自己
+    left_color = reference_colors[floors]
+    right_color = reference_colors[floors + 1]
+    right_weight = alphas % 1
+    right_weight[-1] = 1
+    right_weight = np.expand_dims(right_weight, axis=-1)
+    left_weight = 1 - right_weight
+
+    return left_color * left_weight + right_color * right_weight
 
 
 def interpolate_color(
@@ -1273,6 +1442,7 @@ __all__ = [
     "ManimColorList",
     "ManimColorDType",
     "ParsableManimColor",
+    "update_ColorList",
     "color_to_rgb",
     "color_to_rgba",
     "color_to_int_rgb",

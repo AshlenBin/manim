@@ -236,7 +236,7 @@ class NumberLine(Line):
                 tip_width=self.tip_width,
                 tip_shape=tip_shape,
             )
-            self.tip.set_stroke(self.stroke_color, self.stroke_width)
+            self.tip.set_stroke(self.stroke_colors, self.stroke_width)
 
         if self.include_ticks:
             self.add_ticks()

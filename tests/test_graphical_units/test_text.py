@@ -27,8 +27,8 @@ def test_text_color_inheritance():
     text = Text("test_color_inheritance", font="Sans")
     markup_text = MarkupText("test_color_inheritance", font="Sans")
 
-    assert all(char.fill_color.to_hex() == RED.to_hex() for char in text)
-    assert all(char.fill_color.to_hex() == RED.to_hex() for char in markup_text)
+    assert all(char.fill_colors.to_hex() == RED.to_hex() for char in text)
+    assert all(char.fill_colors.to_hex() == RED.to_hex() for char in markup_text)
 
     # reset the default color so that future tests aren't affected by this change.
     VMobject.set_default()

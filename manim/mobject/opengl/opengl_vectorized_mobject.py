@@ -84,7 +84,7 @@ class OpenGLVMobject(OpenGLMobject):
     fill_shader_folder = "quadratic_bezier_fill"
 
     fill_rgba = _Data()
-    stroke_color = _Data()
+    stroke_colors = _Data()
     stroke_width = _Data()
     unit_normal = _Data()
 
@@ -157,9 +157,9 @@ class OpenGLVMobject(OpenGLMobject):
         self.refresh_unit_normal()
 
         if fill_color is not None:
-            self.fill_color = ManimColor(fill_color)
+            self.fill_colors = ManimColor(fill_color)
         if stroke_color is not None:
-            self.stroke_color = ManimColor(stroke_color)
+            self.stroke_colors = ManimColor(stroke_color)
 
     def _assert_valid_submobjects(self, submobjects: Iterable[OpenGLVMobject]) -> Self:
         return self._assert_valid_submobjects_internal(submobjects, OpenGLVMobject)
@@ -175,18 +175,18 @@ class OpenGLVMobject(OpenGLMobject):
         super().init_data()
         self.data.pop("rgbas")
         self.fill_rgba = np.zeros((1, 4))
-        self.stroke_color = np.zeros((1, 4))
+        self.stroke_colors = np.zeros((1, 4))
         self.unit_normal = np.zeros((1, 3))
         # stroke_width belongs to self.data, but is defined through init_colors+set_stroke
 
     # Colors
     def init_colors(self):
         self.set_fill(
-            color=self.fill_color or self.color,
+            color=self.fill_colors or self.colors,
             opacity=self.fill_opacity,
         )
         self.set_stroke(
-            color=self.stroke_color or self.color,
+            color=self.stroke_colors or self.colors,
             width=self.stroke_width,
             opacity=self.stroke_opacity,
             background=self.draw_stroke_behind_fill,
@@ -295,7 +295,7 @@ class OpenGLVMobject(OpenGLMobject):
             self.set_fill(color=fill_color, opacity=fill_opacity, recurse=recurse)
 
         if stroke_rgba is not None:
-            self.stroke_color = resize_with_interpolation(stroke_rgba, len(fill_rgba))
+            self.stroke_colors = resize_with_interpolation(stroke_rgba, len(fill_rgba))
             self.set_stroke(width=stroke_width)
         else:
             self.set_stroke(
@@ -314,7 +314,7 @@ class OpenGLVMobject(OpenGLMobject):
     def get_style(self):
         return {
             "fill_rgba": self.fill_rgba,
-            "stroke_color": self.stroke_color,
+            "stroke_color": self.stroke_colors,
             "stroke_width": self.stroke_width,
             "gloss": self.gloss,
             "shadow": self.shadow,
@@ -372,10 +372,10 @@ class OpenGLVMobject(OpenGLMobject):
         return self.fill_rgba[:, 3]
 
     def get_stroke_colors(self):
-        return [ManimColor.from_rgb(rgba[:3]) for rgba in self.stroke_color]
+        return [ManimColor.from_rgb(rgba[:3]) for rgba in self.stroke_colors]
 
     def get_stroke_opacities(self):
-        return self.stroke_color[:, 3]
+        return self.stroke_colors[:, 3]
 
     def get_stroke_widths(self):
         return self.stroke_width
@@ -415,7 +415,7 @@ class OpenGLVMobject(OpenGLMobject):
             return self.get_stroke_colors()
         return self.get_fill_colors()
 
-    stroke_color = property(get_stroke_color, set_stroke)
+    stroke_colors = property(get_stroke_color, set_stroke)
     color = property(get_color, set_color)
     fill_color = property(get_fill_color, set_fill)
 

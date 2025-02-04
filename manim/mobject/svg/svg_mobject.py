@@ -211,10 +211,10 @@ class SVGMobject(VMobject, metaclass=ConvertToOpenGL):
     def generate_config_style_dict(self) -> dict[str, str]:
         """Generate a dictionary holding the default style information."""
         config_style_dict = {}
-        config_style_dict["fill"] = self.fill_color.to_hex_strings()[0]
-        config_style_dict["fill-opacity"] = str(self.fill_color.opacity[0])
-        config_style_dict["stroke"] = self.stroke_color.to_hex_strings()[0]
-        config_style_dict["stroke-opacity"] = str(self.stroke_color.opacity[0])
+        config_style_dict["fill"] = self.fill_colors.to_hex_strings()[0]
+        config_style_dict["fill-opacity"] = str(self.fill_colors.opacity[0])
+        config_style_dict["stroke"] = self.stroke_colors.to_hex_strings()[0]
+        config_style_dict["stroke-opacity"] = str(self.stroke_colors.opacity[0])
         config_style_dict["stroke-width"] = str(self.stroke_width)
         return config_style_dict
 
@@ -456,7 +456,7 @@ class VMobjectFromSVGPath(VMobject, metaclass=ConvertToOpenGL):
 
         super().__init__(**kwargs)
 
-    def init_points(self) -> None:
+    def generate_points(self) -> None:
         # TODO: cache mobject in a re-importable way
 
         self.handle_commands()
@@ -469,7 +469,7 @@ class VMobjectFromSVGPath(VMobject, metaclass=ConvertToOpenGL):
                 # Get rid of any null curves
                 self.set_points(self.get_points_without_null_curves())
 
-    generate_points = init_points
+    init_points = generate_points
 
     def handle_commands(self) -> None:
         all_points: list[np.ndarray] = []

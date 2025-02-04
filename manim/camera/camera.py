@@ -23,7 +23,12 @@ from ..mobject.mobject import Mobject
 from ..mobject.types.image_mobject import AbstractImageMobject
 from ..mobject.types.point_cloud_mobject import PMobject
 from ..mobject.types.vectorized_mobject import VMobject
-from ..utils.color import ManimColor, ParsableManimColor, color_to_int_rgba
+from ..utils.color import (
+    ManimColor,
+    ManimColorList,
+    ParsableManimColor,
+    color_to_int_rgba,
+)
 from ..utils.family import extract_mobject_family_members
 from ..utils.images import get_full_raster_image_path
 from ..utils.iterables import list_difference_update
@@ -888,7 +893,7 @@ class Camera:
             self.display_point_cloud(
                 pmobject,
                 pmobject.points,
-                pmobject.rgbas,
+                pmobject.colors,
                 self.adjusted_thickness(pmobject.stroke_width),
                 pixel_array,
             )
@@ -897,7 +902,7 @@ class Camera:
         self,
         pmobject: PMobject,
         points: list,
-        rgbas: np.ndarray,
+        rgbas: ManimColorList,
         thickness: float,
         pixel_array: np.ndarray,
     ):
@@ -921,14 +926,14 @@ class Camera:
         """
         if len(points) == 0:
             return
+
         pixel_coords = self.points_to_pixel_coords(pmobject, points)
         pixel_coords = self.thickened_coordinates(pixel_coords, thickness)
         rgba_len = pixel_array.shape[2]
-
         rgbas = (self.rgb_max_val * rgbas).astype(self.pixel_array_dtype)
         target_len = len(pixel_coords)
         factor = target_len // len(rgbas)
-        rgbas = np.array([rgbas] * factor).reshape((target_len, rgba_len))
+        rgbas = np.repeat(rgbas, factor, axis=0)
 
         on_screen_indices = self.on_screen_pixels(pixel_coords)
         pixel_coords = pixel_coords[on_screen_indices]

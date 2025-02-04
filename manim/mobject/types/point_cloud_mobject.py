@@ -19,10 +19,11 @@ from ...utils.color import (
     WHITE,
     YELLOW,
     ManimColor,
+    ManimColorList,
     ParsableManimColor,
     color_gradient,
-    color_to_rgba,
     rgba_to_color,
+    update_ColorList,
 )
 from ...utils.iterables import stretch_array_to_length
 
@@ -67,51 +68,87 @@ class PMobject(Mobject, metaclass=ConvertToOpenGL):
 
     """
 
-    def __init__(self, stroke_width: int = DEFAULT_STROKE_WIDTH, **kwargs: Any) -> None:
+    __colors: ManimColorList = ManimColorList(None)
+    # PMobject点集强制要求颜色列表与点集列表长度一致，但初始化时只有颜色没有点，所以只能额外用一个变量来存储
+    _default_color: ManimColor = YELLOW
+
+    def __init__(
+        self,
+        color: ParsableManimColor = YELLOW,
+        stroke_width: int = DEFAULT_STROKE_WIDTH,
+        **kwargs: Any,
+    ) -> None:
         self.stroke_width = stroke_width
         super().__init__(**kwargs)
 
-    def reset_points(self) -> Self:
-        self.rgbas = np.zeros((0, 4))
-        self.points = np.zeros((0, 3))
-        return self
+        self.colors = color
 
     def get_array_attrs(self) -> list[str]:
-        return super().get_array_attrs() + ["rgbas"]
+        return super().get_array_attrs() + ["colors"]
 
     def add_points(
         self,
         points: npt.NDArray,
-        rgbas: npt.NDArray | None = None,
         color: ParsableManimColor | None = None,
-        alpha: float = 1,
+        opacity: float = 1.0,
     ) -> Self:
         """Add points.
 
         Points must be a Nx3 numpy array.
-        Rgbas must be a Nx4 numpy array if it is not None.
         """
         if not isinstance(points, np.ndarray):
             points = np.array(points)
-        num_new_points = len(points)
+        if color is None:  # 如果不传入color，则使用默认颜色或最后一个颜色
+            if len(self.colors) == 0:
+                color = self._default_color
+            else:
+                color = self.colors[-1]
+        color = ManimColorList(color, opacity)
+        if len(color) == 1:
+            color = np.repeat(color, len(points), axis=0)
+        elif len(color) != len(points):
+            raise ValueError("points and color must have same length")
+
         self.points = np.append(self.points, points, axis=0)
-        if rgbas is None:
-            color = ManimColor(color) if color else self.color
-            rgbas = np.repeat([color_to_rgba(color, alpha)], num_new_points, axis=0)
-        elif len(rgbas) != len(points):
-            raise ValueError("points and rgbas must have same length")
-        self.rgbas = np.append(self.rgbas, rgbas, axis=0)
+        self.__colors.append(color)
         return self
 
     def set_color(
-        self, color: ParsableManimColor = YELLOW, family: bool = True
+        self,
+        colors: ParsableManimColor = YELLOW,
+        opacity: float = None,
+        family: bool = True,
     ) -> Self:
-        rgba = color_to_rgba(color)
-        mobs = self.family_members_with_points() if family else [self]
-        for mob in mobs:
-            mob.rgbas[:, :] = rgba
-        self.color = ManimColor(color)
+        if family:
+            for mob in self.family_members_with_points(include_self=False):
+                mob.set_color(colors, opacity)
+        if colors is None:
+            self.__colors = update_ColorList(self.__colors, colors, opacity)
+        else:  # 如果是单色，则应用到所有点颜色
+            # ManimColor会自动识别是单颜色还是多颜色，单色返回ManimColor，多色返回ManimColorList
+            if isinstance(ManimColor(colors, opacity), ManimColor):
+                self._default_color = ManimColor(colors, opacity)
+                self.__colors = update_ColorList(
+                    self.__colors, colors, opacity, is_single_color=True
+                )
+            else:  # 如果是多色，则新旧颜色列表长度必须一样，因为PMobject要求颜色数量与点数量严格相等
+                if len(colors) != len(self.points):
+                    raise ValueError(
+                        "In PMobject, points and colors must have same length. Please make sure your input 'colors' to have the same length as previous colors."
+                    )
+                self.__colors = update_ColorList(self.__colors, colors, opacity)
+
         return self
+
+    def get_color(self) -> ManimColorList:
+        # if len(self_colors != len(self.points):
+        #     print("3333------------")
+        #     print(self_colors len(self_colors)
+        #     print(self.points, len(self.points))
+        #     raise ValueError("points and color must have same length")
+        return self.__colors
+
+    colors = property(get_color, set_color)
 
     def get_stroke_width(self) -> int:
         return self.stroke_width
@@ -123,9 +160,7 @@ class PMobject(Mobject, metaclass=ConvertToOpenGL):
         return self
 
     def set_color_by_gradient(self, *colors: ParsableManimColor) -> Self:
-        self.rgbas = np.array(
-            list(map(color_to_rgba, color_gradient(*colors, len(self.points)))),
-        )
+        self.colors = color_gradient(colors, len(self.points))
         return self
 
     def set_colors_by_radial_gradient(
@@ -135,30 +170,29 @@ class PMobject(Mobject, metaclass=ConvertToOpenGL):
         inner_color: ParsableManimColor = WHITE,
         outer_color: ParsableManimColor = BLACK,
     ) -> Self:
-        start_rgba, end_rgba = list(map(color_to_rgba, [inner_color, outer_color]))
+        start_rgba = ManimColor(inner_color)
+        end_rgba = ManimColor(outer_color)
         if center is None:
             center = self.get_center()
         for mob in self.family_members_with_points():
             distances = np.abs(self.points - center)
             alphas = np.linalg.norm(distances, axis=1) / radius
 
-            mob.rgbas = np.array(
-                np.array(
-                    [interpolate(start_rgba, end_rgba, alpha) for alpha in alphas],
-                ),
+            mob.colors = ManimColorList(
+                [interpolate(start_rgba, end_rgba, alpha) for alpha in alphas]
             )
         return self
 
     def match_colors(self, mobject: Mobject) -> Self:
         Mobject.align_data(self, mobject)
-        self.rgbas = np.array(mobject.rgbas)
+        self.colors = mobject.colors
         return self
 
     def filter_out(self, condition: npt.NDArray) -> Self:
         for mob in self.family_members_with_points():
             to_eliminate = ~np.apply_along_axis(condition, 1, mob.points)
             mob.points = mob.points[to_eliminate]
-            mob.rgbas = mob.rgbas[to_eliminate]
+            mob.colors = mob.colors[to_eliminate]
         return self
 
     def thin_out(self, factor: int = 5) -> Self:
@@ -182,13 +216,13 @@ class PMobject(Mobject, metaclass=ConvertToOpenGL):
     def fade_to(
         self, color: ParsableManimColor, alpha: float, family: bool = True
     ) -> Self:
-        self.rgbas = interpolate(self.rgbas, color_to_rgba(color), alpha)
+        self.colors = interpolate(self.colors, ManimColorList(color), alpha)
         for mob in self.submobjects:
             mob.fade_to(color, alpha, family)
         return self
 
     def get_all_rgbas(self) -> npt.NDArray:
-        return self.get_merged_array("rgbas")
+        return self.get_merged_array("colors")
 
     def ingest_submobjects(self) -> Self:
         attrs = self.get_array_attrs()
@@ -199,7 +233,7 @@ class PMobject(Mobject, metaclass=ConvertToOpenGL):
         return self
 
     def get_color(self) -> ManimColor:
-        return rgba_to_color(self.rgbas[0, :])
+        return rgba_to_color(self.colors[0, :])
 
     def point_from_proportion(self, alpha: float) -> Any:
         index = alpha * (self.get_num_points() - 1)
@@ -224,7 +258,7 @@ class PMobject(Mobject, metaclass=ConvertToOpenGL):
     def interpolate_color(
         self, mobject1: Mobject, mobject2: Mobject, alpha: float
     ) -> Self:
-        self.rgbas = interpolate(mobject1.rgbas, mobject2.rgbas, alpha)
+        self.colors = interpolate(mobject1.rgbas, mobject2.rgbas, alpha)
         self.set_stroke_width(
             interpolate(
                 mobject1.get_stroke_width(),
@@ -363,10 +397,6 @@ class PointCloudDot(Mobject1D):
         )
         self.shift(center)
 
-    def init_points(self) -> None:
-        self.reset_points()
-        self.generate_points()
-
     def generate_points(self) -> None:
         self.add_points(
             np.array(
@@ -382,6 +412,8 @@ class PointCloudDot(Mobject1D):
                 ]
             ),
         )
+
+    init_points = generate_points
 
 
 class Point(PMobject):
@@ -412,9 +444,4 @@ class Point(PMobject):
         super().__init__(color=color, **kwargs)
 
     def init_points(self) -> None:
-        self.reset_points()
-        self.generate_points()
-        self.set_points([self.location])
-
-    def generate_points(self) -> None:
         self.add_points(np.array([self.location]))

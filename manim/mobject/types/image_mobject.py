@@ -218,7 +218,7 @@ class ImageMobject(AbstractImageMobject):
             self.pixel_array[:, :, 3] = int(255 * alpha)
         for submob in self.submobjects:
             submob.set_color(color, alpha, family)
-        self.color = color
+        self.colors = color
         return self
 
     def set_opacity(self, alpha: float) -> Self:
@@ -290,7 +290,7 @@ class ImageMobject(AbstractImageMobject):
 
     def get_style(self) -> dict[str, Any]:
         return {
-            "fill_color": ManimColor(self.color.get_rgb()).to_hex(),
+            "fill_color": self.colors,
             "fill_opacity": self.fill_opacity,
         }
 

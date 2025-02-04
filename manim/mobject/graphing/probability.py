@@ -319,7 +319,7 @@ class BarChart(Axes):
         Primarily used when the bars are initialized with ``self._add_bars``
         or updated via ``self.change_bar_values``.
         """
-        self.bars.set_color_by_gradient(*self.bar_colors)
+        self.bars.set_color_by_gradient(self.bar_colors)
 
     def _add_x_axis_labels(self):
         """Essentially :meth`:~.NumberLine.add_labels`, but differs in that

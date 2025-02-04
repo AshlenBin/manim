@@ -89,6 +89,8 @@ class Line(TipableVMobject):
             path_arc=self.path_arc,  # type: ignore[arg-type]
         )
 
+    init_points = generate_points
+
     def set_points_by_ends(
         self,
         start: Point3DLike | Mobject,
@@ -122,8 +124,6 @@ class Line(TipableVMobject):
             self.set_points_as_corners(np.asarray([self.start, self.end]))
 
         self._account_for_buff(buff)
-
-    init_points = generate_points
 
     def _account_for_buff(self, buff: float) -> None:
         if buff == 0:

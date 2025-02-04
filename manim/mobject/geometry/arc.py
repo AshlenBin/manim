@@ -23,6 +23,8 @@ Examples
 
 from __future__ import annotations
 
+from manim import config
+
 __all__ = [
     "TipableVMobject",
     "Arc",
@@ -329,23 +331,21 @@ class Arc(TipableVMobject):
         super().__init__(**kwargs)
 
     def generate_points(self) -> None:
-        self._set_pre_positioned_points()
+        if config.renderer == RendererType.OPENGL:
+            self.set_points(
+                Arc._create_quadratic_bezier_points(
+                    angle=self.angle,
+                    start_angle=self.start_angle,
+                    n_components=self.num_components,
+                ),
+            )
+        else:
+            self._set_pre_positioned_points()
+
         self.scale(self.radius, about_point=ORIGIN)
         self.shift(self.arc_center)
 
-    # Points are set a bit differently when rendering via OpenGL.
-    # TODO: refactor Arc so that only one strategy for setting points
-    # has to be used.
-    def init_points(self) -> None:
-        self.set_points(
-            Arc._create_quadratic_bezier_points(
-                angle=self.angle,
-                start_angle=self.start_angle,
-                n_components=self.num_components,
-            ),
-        )
-        self.scale(self.radius, about_point=ORIGIN)
-        self.shift(self.arc_center)
+    init_points = generate_points
 
     @staticmethod
     def _create_quadratic_bezier_points(
@@ -545,15 +545,27 @@ class Circle(Arc):
         self,
         radius: float | None = None,
         color: ParsableManimColor = RED,
+        fill_color: ParsableManimColor = None,
+        stroke_color: ParsableManimColor = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(
-            radius=radius,
-            start_angle=0,
-            angle=TAU,
-            stroke_color=color,
-            **kwargs,
-        )
+        if fill_color is not None or stroke_color is not None:
+            super().__init__(
+                radius=radius,
+                start_angle=0,
+                angle=TAU,
+                fill_color=fill_color,
+                stroke_color=stroke_color,
+                **kwargs,
+            )
+        else:
+            super().__init__(
+                radius=radius,
+                start_angle=0,
+                angle=TAU,
+                stroke_color=color,
+                **kwargs,
+            )
 
     def surround(
         self,
@@ -708,7 +720,7 @@ class Dot(Circle):
         point: Point3DLike = ORIGIN,
         radius: float = DEFAULT_DOT_RADIUS,
         stroke_width: float = 0,
-        fill_opacity: float = 1.0,
+        fill_opacity: float = None,
         color: ParsableManimColor = WHITE,
         **kwargs: Any,
     ) -> None:

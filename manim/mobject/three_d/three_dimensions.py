@@ -33,10 +33,7 @@ from manim.mobject.mobject import *
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 from manim.mobject.opengl.opengl_mobject import OpenGLMobject
 from manim.mobject.types.vectorized_mobject import VectorizedPoint, VGroup, VMobject
-from manim.utils.color import (
-    ManimColor,
-    ParsableManimColor,
-)
+from manim.utils.color import ManimColor, ParsableManimColor
 from manim.utils.iterables import tuplify
 from manim.utils.space_ops import normalize, perpendicular_bisector, z_to_vector
 
@@ -119,7 +116,7 @@ class Surface(VGroup, metaclass=ConvertToOpenGL):
         super().__init__(**kwargs)
         self.resolution = resolution
         self.surface_piece_config = surface_piece_config
-        self.fill_color: ManimColor = ManimColor(fill_color)
+        self.fill_colors: ManimColor = ManimColor(fill_color)
         self.fill_opacity = fill_opacity
         if checkerboard_colors:
             self.checkerboard_colors: list[ManimColor] = [
@@ -127,7 +124,7 @@ class Surface(VGroup, metaclass=ConvertToOpenGL):
             ]
         else:
             self.checkerboard_colors = checkerboard_colors
-        self.stroke_color: ManimColor = ManimColor(stroke_color)
+        self.stroke_colors: ManimColor = ManimColor(stroke_color)
         self.stroke_width = stroke_width
         self.should_make_jagged = should_make_jagged
         self.pre_function_handle_to_anchor_scale_factor = (
@@ -178,9 +175,9 @@ class Surface(VGroup, metaclass=ConvertToOpenGL):
                 face.u2 = u2
                 face.v1 = v1
                 face.v2 = v2
-        faces.set_fill(color=self.fill_color, opacity=self.fill_opacity)
+        faces.set_fill(color=self.fill_colors, opacity=self.fill_opacity)
         faces.set_stroke(
-            color=self.stroke_color,
+            color=self.stroke_colors,
             width=self.stroke_width,
             opacity=self.stroke_opacity,
         )
@@ -555,6 +552,8 @@ class Prism(Cube):
         for dim, value in enumerate(self.dimensions):
             self.rescale_to_fit(value, dim, stretch=True)
 
+    init_points = generate_points
+
 
 class Cone(Surface):
     """A circular cone.
@@ -621,7 +620,7 @@ class Cone(Surface):
         self._current_phi = 0
         self.base_circle = Circle(
             radius=base_radius,
-            color=self.fill_color,
+            color=self.fill_colors,
             fill_opacity=self.fill_opacity,
             stroke_width=0,
         )
@@ -804,10 +803,10 @@ class Cylinder(Surface):
     def add_bases(self) -> None:
         """Adds the end caps of the cylinder."""
         if config.renderer == RendererType.OPENGL:
-            color = self.color
+            color = self.colors
             opacity = self.opacity
         elif config.renderer == RendererType.CAIRO:
-            color = self.fill_color
+            color = self.fill_colors
             opacity = self.fill_opacity
 
         self.base_top = Circle(

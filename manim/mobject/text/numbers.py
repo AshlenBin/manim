@@ -163,7 +163,7 @@ class DecimalNumber(VMobject, metaclass=ConvertToOpenGL):
         # Add non-numerical bits
         if self.show_ellipsis:
             self.add(
-                self._string_to_mob("\\dots", SingleStringMathTex, color=self.color),
+                self._string_to_mob("\\dots", SingleStringMathTex, color=self.colors),
             )
 
         self.arrange(

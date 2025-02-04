@@ -111,9 +111,17 @@ class Mobject:
         self.submobjects = []
         self.updaters: list[Updater] = []
         self.updating_suspended = False
+        self.points = np.zeros((0, self.dim))
+        self.init_points()
 
-        self.reset_points()
-        self.generate_points()
+    # 下面init_points()和generate_points()两个方法子类要重写
+    def init_points(self) -> None:
+        """Initializes the points of the object."""
+        pass
+
+    def generate_points(self) -> None:
+        """Generates the points of the object."""
+        pass
 
     def _assert_valid_submobjects(self, submobjects: Iterable[Mobject]) -> Self:
         """Check that all submobjects are actually instances of
@@ -402,24 +410,6 @@ class Mobject:
 
     def __repr__(self) -> str:
         return str(self.name)
-
-    def reset_points(self) -> None:
-        """Sets :attr:`points` to be an empty array."""
-        self.points = np.zeros((0, self.dim))
-
-    def init_colors(self) -> object:
-        """Initializes the colors.
-
-        Gets called upon creation. This is an empty method that can be implemented by
-        subclasses.
-        """
-
-    def generate_points(self) -> object:
-        """Initializes :attr:`points` and therefore the shape.
-
-        Gets called upon creation. This is an empty method that can be implemented by
-        subclasses.
-        """
 
     def add(self, *mobjects: Mobject) -> Self:
         """Add mobjects as submobjects.
@@ -1863,7 +1853,7 @@ class Mobject:
             for submob in self.submobjects:
                 submob.set_color(color, family=family)
 
-        self.color = ManimColor(color)
+        self.colors = ManimColor(color)
         return self
 
     def set_color_by_gradient(self, *colors: ParsableManimColor) -> Self:
@@ -1873,7 +1863,7 @@ class Mobject:
         colors
             The colors to use for the gradient. Use like `set_color_by_gradient(RED, BLUE, GREEN)`.
 
-        self.color = ManimColor(color)
+        self.colors = ManimColor(color)
         return self
         """
         self.set_submobject_colors_by_gradient(*colors)
@@ -1926,7 +1916,7 @@ class Mobject:
         return self
 
     def to_original_color(self) -> Self:
-        self.set_color(self.color)
+        self.set_color(self.colors)
         return self
 
     def fade_to(
@@ -1958,7 +1948,7 @@ class Mobject:
             True
 
         """
-        return self.color
+        return self.colors
 
     ##
 
@@ -2305,7 +2295,7 @@ class Mobject:
         result = [self] if len(self.points) > 0 else []
         return result + self.submobjects
 
-    def get_family(self, recurse: bool = True) -> list[Self]:
+    def get_family(self, include_self: bool = True, recurse: bool = True) -> list[Self]:
         """Lists all mobjects in the hierarchy (family) of the given mobject,
         including the mobject itself and all its submobjects recursively.
 
@@ -2332,11 +2322,13 @@ class Mobject:
 
         """
         sub_families = [x.get_family() for x in self.submobjects]
-        all_mobjects = [self] + list(it.chain(*sub_families))
+        all_mobjects = list(it.chain(*sub_families))
+        if include_self:
+            all_mobjects.append(self)
         return remove_list_redundancies(all_mobjects)
 
-    def family_members_with_points(self) -> list[Self]:
-        return [m for m in self.get_family() if m.get_num_points() > 0]
+    def family_members_with_points(self, include_self: bool = True) -> list[Self]:
+        return [m for m in self.get_family(include_self) if m.get_num_points() > 0]
 
     def arrange(
         self,

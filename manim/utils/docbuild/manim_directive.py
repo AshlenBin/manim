@@ -25,7 +25,7 @@ render scenes that are defined within doctests, for example::
 
         >>> from manim import Create, Dot, RED, Scene
         >>> dot = Dot(color=RED)
-        >>> dot.color
+        >>> dot.colors
         ManimColor('#FC6255')
         >>> class DirectiveDoctestExample(Scene):
         ...     def construct(self):
