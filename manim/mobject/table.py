@@ -75,8 +75,7 @@ from manim.mobject.text.numbers import DecimalNumber, Integer
 from manim.mobject.text.tex_mobject import MathTex
 from manim.mobject.text.text_mobject import Paragraph
 
-from ..animation.animation import Animation
-from ..animation.composition import AnimationGroup
+from ..animation.animation import Animation, AnimationGroup
 from ..animation.creation import Create, Write
 from ..animation.fading import FadeIn
 from ..mobject.types.vectorized_mobject import VGroup, VMobject

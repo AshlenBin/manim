@@ -1100,6 +1100,7 @@ class Scene:
 
         """
         # If we are in interactive embedded mode, make sure this is running on the main thread (required for OpenGL)
+        args_parsed = Animation.parse(args)
         if (
             self.interactive_mode
             and config.renderer == RendererType.OPENGL
@@ -1115,14 +1116,14 @@ class Scene:
             self.queue.put(
                 (
                     "play",
-                    args,
+                    args_parsed,
                     kwargs,
                 )
             )
             return
 
         start_time = self.time
-        self.renderer.play(self, *args, **kwargs)
+        self.renderer.play(self, args_parsed, **kwargs)
         run_time = self.time - start_time
         if subcaption:
             if subcaption_duration is None:

@@ -20,7 +20,6 @@ import numpy as np
 
 from .animation.animation import *
 from .animation.changing import *
-from .animation.composition import *
 from .animation.creation import *
 from .animation.fading import *
 from .animation.growing import *

@@ -2764,7 +2764,7 @@ class Mobject:
     def push_self_into_submobjects(self) -> Self:
         copy = self.copy()
         copy.submobjects = []
-        self.reset_points()
+        self.init_points()
         self.add(copy)
         return self
 

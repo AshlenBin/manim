@@ -11,8 +11,7 @@ from manim.mobject.geometry.arc import Circle
 from manim.mobject.geometry.polygram import Square, Triangle
 
 from .. import constants as cst
-from ..animation.animation import override_animation
-from ..animation.composition import AnimationGroup, Succession
+from ..animation.animation import AnimationGroup, Succession, override_animation
 from ..animation.creation import Create, SpiralIn
 from ..animation.fading import FadeIn
 from ..mobject.svg.svg_mobject import VMobjectFromSVGPath

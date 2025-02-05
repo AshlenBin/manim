@@ -91,8 +91,7 @@ from manim.mobject.opengl.opengl_vectorized_mobject import OpenGLVMobject
 from manim.utils.color import ManimColor
 
 from .. import config
-from ..animation.animation import Animation
-from ..animation.composition import Succession
+from ..animation.animation import Animation, Succession
 from ..mobject.mobject import Group, Mobject
 from ..mobject.types.vectorized_mobject import VMobject
 from ..utils.bezier import integer_interpolate

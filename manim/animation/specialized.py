@@ -8,7 +8,7 @@ from typing import Any
 from manim.animation.transform import Restore
 
 from ..constants import *
-from .composition import LaggedStart
+from .animation import LaggedStart
 
 
 class Broadcast(LaggedStart):

@@ -22,7 +22,7 @@ from manim.mobject.geometry.line import Vector
 from manim.mobject.graphing.coordinate_systems import CoordinateSystem
 
 from .. import config
-from ..animation.composition import AnimationGroup, Succession
+from ..animation.animation import AnimationGroup, Succession
 from ..animation.creation import Create
 from ..animation.indication import ShowPassingFlash
 from ..constants import OUT, RIGHT, UP, RendererType

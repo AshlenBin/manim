@@ -17,7 +17,7 @@ from manim.mobject.mobject import Mobject
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 from manim.mobject.text.tex_mobject import MathTex, Tex
 
-from ...animation.composition import AnimationGroup
+from ...animation.animation import AnimationGroup
 from ...animation.fading import FadeIn
 from ...animation.growing import GrowFromCenter
 from ...constants import *

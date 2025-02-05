@@ -94,7 +94,9 @@ class Polygram(VMobject, metaclass=ConvertToOpenGL):
         ):
             super().__init__(**kwargs)
         else:
-            super().__init__(stroke_color=color, **kwargs)
+            super().__init__(
+                fill_color=color, fill_opacity=0.5, stroke_color=color, **kwargs
+            )
 
         for vertices in vertex_groups:
             # The inferred type for *vertices is Any, but it should be

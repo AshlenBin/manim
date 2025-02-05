@@ -563,6 +563,8 @@ class Circle(Arc):
                 radius=radius,
                 start_angle=0,
                 angle=TAU,
+                fill_color=color,
+                fill_opacity=0.7,
                 stroke_color=color,
                 **kwargs,
             )

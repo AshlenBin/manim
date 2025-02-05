@@ -15,7 +15,7 @@ from .._config import config
 from ..constants import RendererType
 from ..mobject.mobject import Group, Mobject
 from ..mobject.types.vectorized_mobject import VGroup, VMobject
-from .composition import AnimationGroup
+from .animation import AnimationGroup
 from .fading import FadeIn, FadeOut
 from .transform import FadeTransformPieces, Transform
 

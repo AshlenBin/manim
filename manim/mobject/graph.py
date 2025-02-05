@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
     NxGraph: TypeAlias = nx.classes.graph.Graph | nx.classes.digraph.DiGraph
 
-from manim.animation.composition import AnimationGroup
+from manim.animation.animation import AnimationGroup
 from manim.animation.creation import Create, Uncreate
 from manim.mobject.geometry.arc import Dot, LabeledDot
 from manim.mobject.geometry.line import Line
