@@ -109,7 +109,7 @@ class ManimColor(np.ndarray):
     def __new__(
         cls,
         value: ParsableManimColor | None = None,
-        alpha: float | None = None,
+        opacity: float | None = None,
         scale: int = 255,
     ) -> None:
         if (
@@ -128,7 +128,7 @@ class ManimColor(np.ndarray):
             返回：报错，ManimColor初始化发现color长度不为3或4
             如果你想输入灰度值列表，请直接使用ManimColor.gray([1,2,3,4,5])
             """
-            return ManimColorList(value, alpha)
+            return ManimColorList(value, opacity)
 
         _internal_value = np.array((0, 0, 0, 1), dtype=ManimColorDType)
 
@@ -176,10 +176,11 @@ class ManimColor(np.ndarray):
                 "list[int, int, int, int], list[float, float, float], "
                 f"list[float, float, float, float]. You input: value =  {value}"
             )
-        if alpha is not None:
+        if opacity is not None:
             # 如果传入alpha不为None，则将其作为不透明度，否则不透明度默认为1.0
             # 比如如果value是RGBa，则alpha覆盖RGBa的a
-            _internal_value[3] = alpha
+            _internal_value[3] = opacity
+
         return _internal_value.view(cls).copy()
 
     # def __array_finalize__(self, obj: Self) -> None:
@@ -789,19 +790,26 @@ class ManimColorList(np.ndarray):
         ) = None,
         opacity: float | Sequence[float] | None = None,
     ):
-        if isinstance(colors, ManimColorList):
-            if (
-                colors.ndim == 1
-            ):  # colors[0]索引会导致维度变成1，而类型依旧是ManimColorList
-                colors = np.expand_dims(colors, axis=0)
-            return colors.copy()
         if colors is None or (
             isinstance(colors, (np.ndarray, Sequence)) and len(colors) == 0
         ):
             return np.zeros((0, 4), dtype=ManimColorDType).view(cls).copy()
+        if not isinstance(colors, str):
+            # 深拷贝，避免修改原数组。str没有copy()方法
+            colors = colors.copy()
+        if isinstance(colors, ManimColorList):
+            if colors.ndim == 1:
+                # colors[0]索引会导致维度变成1，而类型依旧是ManimColorList
+                colors = np.expand_dims(colors, axis=0)
+            if opacity is not None:
+                colors.opacity = opacity
+            return colors
+
         if isinstance(colors, ManimColor):
-            obj = np.expand_dims(colors, axis=0).view(cls)
-            return obj.copy()
+            colors = np.expand_dims(colors, axis=0).view(cls)
+            if opacity is not None:
+                colors.opacity = opacity
+            return colors
         if isinstance(colors, (int, float, str)):
             # 输入1变为[1]，输入'#'变为['#']
             colors = [colors]
@@ -816,9 +824,10 @@ class ManimColorList(np.ndarray):
                 raise Warning(
                     "You have converted a boolean array to a ManimColorList. Is this intended?"
                 )
+            colors = colors.astype(ManimColorDType)
             if colors.ndim == 1:
                 # 输入[1,2,3]变为[[1,2,3]]
-                colors = [colors]
+                colors = np.expand_dims(colors, axis=0)
             elif colors.ndim > 2:
                 raise ValueError("'colors' Array must have exactly 1 or 2 dimensions.")
 
@@ -826,14 +835,15 @@ class ManimColorList(np.ndarray):
             # 输入[1,2,3]变为[[1,2,3]]，输入[1,2,'#']保持不变
             if all(isinstance(c, (int, float)) for c in colors):
                 colors = [colors]
-
-        if not isinstance(opacity, (np.ndarray, Sequence)):
+        if opacity is None:
+            color_list = [ManimColor(c, None) for c in colors]
+        elif not isinstance(opacity, (np.ndarray, Sequence)):
             # 输入多个color和一个opacity，则opacity是所有color的opacity
-            color_list = [ManimColor(c, opacity).to_rgba() for c in colors]
+            color_list = [ManimColor(c, opacity) for c in colors]
         else:
             if len(opacity) != len(colors):
-                raise ValueError("length of opacity must match length of color")
-            color_list = [ManimColor(c, o).to_rgba() for c, o in zip(colors, opacity)]
+                raise ValueError("length of opacity must match length of colors")
+            color_list = [ManimColor(c, o) for c, o in zip(colors, opacity)]
 
         obj = np.asarray(color_list, dtype=np.float64).view(cls)  # ManimColorDType
         return obj.copy()
@@ -853,7 +863,7 @@ class ManimColorList(np.ndarray):
             self[:, 3] = opacity
         else:
             if len(opacity) != len(self):
-                raise ValueError("length of opacity must match length of color")
+                raise ValueError("length of opacity must match length of colors")
             self[:, 3] = opacity
 
     def get_opacity(self) -> np.ndarray:
@@ -1118,7 +1128,6 @@ def update_ColorList(
                 if not has_rgba:
                     opacity = old_colors.opacity[0]
 
-        colors = old_colors.copy()  # np.ndarrays是浅拷贝，所以要避免修改原数组
     colors = ManimColorList(new_colors, opacity)
     if is_single_color:
         colors = np.repeat(colors, len(old_colors), axis=0)
