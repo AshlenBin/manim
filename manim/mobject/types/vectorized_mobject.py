@@ -175,8 +175,8 @@ class VMobject(Mobject):
         if background_stroke_color is not None:
             self.set_background_stroke(
                 background_stroke_color,
-                background_stroke_width,
                 background_stroke_opacity,
+                background_stroke_width,
             )
         super().__init__(**kwargs)
 
@@ -256,14 +256,14 @@ class VMobject(Mobject):
     def set_stroke(
         self,
         color: ParsableManimColor = None,
-        width: float = None,
         opacity: float | None = None,
+        width: float = None,
         background=False,
         family: bool = True,
     ) -> Self:
         if family:
             for submobject in self.submobjects:
-                submobject.set_stroke(color, width, opacity, background, family)
+                submobject.set_stroke(color, opacity, width, background, family)
         if isinstance(color, dict):
             color = color["stroke_color"]
         if background:
@@ -290,12 +290,12 @@ class VMobject(Mobject):
     def set_background_stroke(
         self,
         color: ParsableManimColor = None,
-        width: float = 10,
         opacity: float | None = None,
+        width: float = 10,
         family: bool = True,
     ) -> Self:
 
-        self.set_stroke(color, width, opacity, True, family)
+        self.set_stroke(color, opacity, width, True, family)
         return self
 
     def get_background_stroke_colors(self) -> ManimColorList:
@@ -365,14 +365,14 @@ class VMobject(Mobject):
         self.set_fill(color=fill_color, opacity=fill_opacity, family=family)
         self.set_stroke(
             color=stroke_color,
-            width=stroke_width,
             opacity=stroke_opacity,
+            width=stroke_width,
             family=family,
         )
         self.set_background_stroke(
             color=background_stroke_color,
-            width=background_stroke_width,
             opacity=background_stroke_opacity,
+            width=background_stroke_width,
             family=family,
         )
         if sheen_factor:

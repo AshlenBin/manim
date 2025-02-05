@@ -116,16 +116,14 @@ class Surface(VGroup, metaclass=ConvertToOpenGL):
         super().__init__(**kwargs)
         self.resolution = resolution
         self.surface_piece_config = surface_piece_config
-        self.fill_colors: ManimColor = ManimColor(fill_color)
-        self.fill_opacity = fill_opacity
+        self.set_fill(fill_color, fill_opacity)
+        self.set_stroke(stroke_color, None, stroke_width)
         if checkerboard_colors:
             self.checkerboard_colors: list[ManimColor] = [
                 ManimColor(x) for x in checkerboard_colors
             ]
         else:
             self.checkerboard_colors = checkerboard_colors
-        self.stroke_colors: ManimColor = ManimColor(stroke_color)
-        self.stroke_width = stroke_width
         self.should_make_jagged = should_make_jagged
         self.pre_function_handle_to_anchor_scale_factor = (
             pre_function_handle_to_anchor_scale_factor
@@ -175,11 +173,10 @@ class Surface(VGroup, metaclass=ConvertToOpenGL):
                 face.u2 = u2
                 face.v1 = v1
                 face.v2 = v2
-        faces.set_fill(color=self.fill_colors, opacity=self.fill_opacity)
+        faces.set_fill(color=self.fill_colors)
         faces.set_stroke(
             color=self.stroke_colors,
             width=self.stroke_width,
-            opacity=self.stroke_opacity,
         )
         self.add(*faces)
         if self.checkerboard_colors:
@@ -621,7 +618,6 @@ class Cone(Surface):
         self.base_circle = Circle(
             radius=base_radius,
             color=self.fill_colors,
-            fill_opacity=self.fill_opacity,
             stroke_width=0,
         )
         self.base_circle.shift(height * IN)
@@ -804,15 +800,12 @@ class Cylinder(Surface):
         """Adds the end caps of the cylinder."""
         if config.renderer == RendererType.OPENGL:
             color = self.colors
-            opacity = self.opacity
         elif config.renderer == RendererType.CAIRO:
             color = self.fill_colors
-            opacity = self.fill_opacity
 
         self.base_top = Circle(
             radius=self.radius,
             color=color,
-            fill_opacity=opacity,
             shade_in_3d=True,
             stroke_width=0,
         )
@@ -820,7 +813,6 @@ class Cylinder(Surface):
         self.base_bottom = Circle(
             radius=self.radius,
             color=color,
-            fill_opacity=opacity,
             shade_in_3d=True,
             stroke_width=0,
         )

@@ -70,7 +70,7 @@ class Broadcast(LaggedStart):
         anims = []
 
         # Works by saving the mob that is passed into the animation, scaling it to 0 (or the initial_width) and then restoring the original mob.
-        fill_o = bool(mobject.fill_opacity)
+        fill_o = bool(mobject.fill_colors.opacity[0])
 
         for _ in range(self.n_mobs):
             mob = mobject.copy()
