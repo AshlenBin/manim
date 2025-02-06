@@ -59,7 +59,7 @@ from typing import TypeVar, Union, overload
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import Self, TypeAlias, TypeIs, override
+from typing_extensions import Self, TypeAlias, override
 
 from manim.typing import (
     HSL_Array_Float,
@@ -772,6 +772,7 @@ class ManimColorList(np.ndarray):
     输入多个color和一个opacity，则opacity是所有color的opacity
     若opacity==None且colors不为RGBa，则默认opacity=1（在ManimColor初始化里）
     若opacity不为None 且 colors为RGBa，则opacity覆盖RGBa的a
+    【注意】不接受灰度值！如果输入灰度值列表，请直接使用ManimColor.gray([1,2,3,4,5])
     """
 
     def __new__(
@@ -794,7 +795,8 @@ class ManimColorList(np.ndarray):
             isinstance(colors, (np.ndarray, Sequence)) and len(colors) == 0
         ):
             return np.zeros((0, 4), dtype=ManimColorDType).view(cls).copy()
-        if not isinstance(colors, str):
+
+        if hasattr(colors, "copy"):
             # 深拷贝，避免修改原数组。str没有copy()方法
             colors = colors.copy()
         if isinstance(colors, ManimColorList):

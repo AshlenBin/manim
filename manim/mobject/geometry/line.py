@@ -78,7 +78,7 @@ class Line(TipableVMobject):
         self.buff = buff
         self.path_arc = path_arc
         self._set_start_and_end_attrs(start, end)
-        super().__init__(stroke_color=color, **kwargs)
+        super().__init__(stroke_color=color,fill_color=color, **kwargs)
         # TODO: Deal with the situation where path_arc is None
 
     def generate_points(self) -> None:

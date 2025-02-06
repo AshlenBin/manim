@@ -3057,7 +3057,7 @@ class Group(Mobject, metaclass=ConvertToOpenGL):
 
 
 class _AnimationBuilder:
-    def __init__(self, mobject) -> None:
+    def __init__(self, mobject: Mobject) -> None:
         self.mobject = mobject
         self.mobject.generate_target()
 

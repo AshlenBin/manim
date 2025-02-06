@@ -52,7 +52,7 @@ The following modules contain the predefined color constants:
 
 from __future__ import annotations
 
-from . import AS2700, BS381, DVIPSNAMES, SVGNAMES, X11, XKCD
+# from . import AS2700, BS381, DVIPSNAMES, SVGNAMES, X11, XKCD
 from .core import *
 from .manim_colors import *
 
